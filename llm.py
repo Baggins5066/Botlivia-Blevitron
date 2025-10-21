@@ -53,15 +53,16 @@ Answer: """
 async def get_llm_response(prompt, current_user_id=None, history=None):
     persona = PERSONA_TEXT
     
-    # Retrieve relevant memories from past conversations
+    # Retrieve relevant memories from past conversations (prioritizing Olivia's messages)
     try:
         current_message = prompt.split("User: ")[-1] if "User: " in prompt else prompt
         memories = await get_relevant_memories(current_message, history or [], limit=5)
         
         if memories:
             memory_text = "\n".join([f"- {mem}" for mem in memories])
-            prompt = f"[Relevant past messages for context]:\n{memory_text}\n\n{prompt}"
-            log(f"[MEMORY] Retrieved {len(memories)} relevant memories", Fore.MAGENTA)
+            # Frame memories as writing style examples to learn from
+            prompt = f"[WRITING STYLE EXAMPLES - Match this tone, style, abbreviations, and phrasing]:\n{memory_text}\n\n{prompt}"
+            log(f"[MEMORY] Retrieved {len(memories)} style examples", Fore.MAGENTA)
     except Exception as e:
         log(f"[MEMORY ERROR] {e}, continuing without memories", Fore.YELLOW)
     

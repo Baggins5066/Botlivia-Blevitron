@@ -4,17 +4,23 @@
 ✅ **Production Ready with RAG Memory** - Bot tested with semantic memory system (Oct 21, 2025)
 
 ### Recent Changes (Oct 21, 2025)
+- **Writing Style Learning** - Bot now learns to write like Olivia from real message examples:
+  - Stores author information with each message in ChromaDB
+  - Prioritizes Olivia's (phrogsleg) messages when retrieving memories (70%+ of examples)
+  - Frames retrieved memories as "writing style examples" for the LLM to mimic
+  - Bot learns tone, abbreviations, capitalization, and phrasing from actual conversations
+  - Database re-processed with 636 messages including author metadata
 - **Migrated to ChromaDB for Local Storage** - Moved from PostgreSQL to file-based ChromaDB:
-  - All message embeddings now stored locally in `chroma_data/` directory (3.6MB)
+  - All message embeddings now stored locally in `chroma_data/` directory
   - No external database dependencies - fully self-contained project
-  - 482 unique messages with 768-dimensional vectors
+  - 636 unique messages with 768-dimensional vectors and author metadata
   - Migrated from PostgreSQL successfully with hash-based deduplication
   - Easy to back up, deploy, and version control
 - **RAG Memory System** - Vector database with semantic search:
   - ChromaDB for local vector similarity search with cosine distance
   - Google text-embedding-004 for generating 768-dimensional vectors
   - Semantic search retrieves relevant past messages before generating responses
-  - Bot has "memory" of 480+ unique Discord conversations
+  - Bot has "memory" of 636 unique Discord conversations with author attribution
   - Easy ingestion pipeline for adding more message history
 - Code analysis and bug fixes:
   - **Removed status cycling feature** - Eliminated unused status generation to simplify bot
@@ -31,8 +37,8 @@
 - **llm.py**: LLM integration for AI-powered responses and decision-making with memory retrieval
 - **utils.py**: Utility functions for logging and smart user mention handling with regex
 - **chromadb_storage.py**: Local vector database storage using ChromaDB with cosine similarity
-- **memory_search.py**: Semantic search using vector embeddings to find relevant past messages
-- **message_parser.py**: Parser for Discord export text files to extract clean message content
+- **memory_search.py**: Semantic search using vector embeddings with author-based prioritization for style learning
+- **message_parser.py**: Parser for Discord export text files to extract message content and author information
 - **embedding_pipeline.py**: Pipeline to generate embeddings and store them in ChromaDB
 - **migrate_postgres_to_chromadb.py**: One-time migration script from PostgreSQL to ChromaDB
 - **requirements.txt**: Python dependencies (discord.py, colorama, aiohttp, chromadb)
@@ -72,9 +78,10 @@ To add more Discord message history to the bot's memory:
 4. Bot will immediately have access to the new memories
 
 ### Data Storage
-- **Local Storage**: All embeddings stored in `chroma_data/` directory (currently 3.6MB)
+- **Local Storage**: All embeddings stored in `chroma_data/` directory with author metadata
 - **Portable**: Entire database is part of the project - easy to backup and version control
 - **Deduplication**: Automatic hash-based deduplication prevents duplicate messages
+- **Author Tracking**: Each message includes author information for style learning
 - **By default, `chroma_data/` is committed to git** - to exclude it, uncomment the line in `.gitignore`
 
 ### Deployment

@@ -44,7 +44,7 @@ def get_or_create_collection():
     return collection
 
 
-def add_messages(messages, embeddings, message_ids=None):
+def add_messages(messages, embeddings, message_ids=None, authors=None):
     """
     Add messages and their embeddings to ChromaDB with proper deduplication.
     Filters out duplicates and only adds new messages.
@@ -53,6 +53,7 @@ def add_messages(messages, embeddings, message_ids=None):
         messages: List of message text content
         embeddings: List of embedding vectors (must match length of messages)
         message_ids: Optional list of IDs (will auto-generate if not provided)
+        authors: Optional list of author names (must match length of messages if provided)
         
     Returns:
         int: Number of messages added (excludes duplicates)
@@ -62,6 +63,9 @@ def add_messages(messages, embeddings, message_ids=None):
     
     if len(messages) != len(embeddings):
         raise ValueError("Messages and embeddings must have same length")
+    
+    if authors and len(authors) != len(messages):
+        raise ValueError("Authors must have same length as messages")
     
     collection = get_or_create_collection()
     
@@ -91,6 +95,7 @@ def add_messages(messages, embeddings, message_ids=None):
     new_messages = []
     new_embeddings = []
     new_ids = []
+    new_authors = []
     
     for msg_id, index in id_to_first_occurrence.items():
         # Only add if not already in database
@@ -98,6 +103,8 @@ def add_messages(messages, embeddings, message_ids=None):
             new_messages.append(messages[index])
             new_embeddings.append(embeddings[index])
             new_ids.append(msg_id)
+            if authors:
+                new_authors.append(authors[index])
     
     # If no new messages, return early
     if not new_messages:
@@ -110,12 +117,18 @@ def add_messages(messages, embeddings, message_ids=None):
         embedding_list = [emb.tolist() if hasattr(emb, 'tolist') else list(emb) for emb in new_embeddings]
     
     try:
+        # Build metadata with author information if available
+        if new_authors:
+            metadatas = [{"text": msg, "author": author} for msg, author in zip(new_messages, new_authors)]
+        else:
+            metadatas = [{"text": msg} for msg in new_messages]
+        
         # Add only new messages to collection
         collection.add(
             ids=new_ids,
             embeddings=embedding_list,
             documents=new_messages,
-            metadatas=[{"text": msg} for msg in new_messages]
+            metadatas=metadatas
         )
         return len(new_messages)
     except Exception as e:
@@ -132,7 +145,7 @@ def search_similar_messages(query_embedding, limit=8):
         limit: Maximum number of results to return
         
     Returns:
-        List of tuples (message_content, similarity_score)
+        List of tuples (message_content, similarity_score, author)
     """
     collection = get_or_create_collection()
     
@@ -146,16 +159,20 @@ def search_similar_messages(query_embedding, limit=8):
         results = collection.query(
             query_embeddings=[query_embedding],
             n_results=limit,
-            include=["documents", "distances"]
+            include=["documents", "distances", "metadatas"]
         )
         
-        # Convert results to list of tuples (message, similarity)
+        # Convert results to list of tuples (message, similarity, author)
         # ChromaDB returns distances, we convert to similarity (1 - distance)
-        messages = results['documents'][0] if results['documents'] else []
-        distances = results['distances'][0] if results['distances'] else []
+        messages = results['documents'][0] if results.get('documents') else []
+        distances = results['distances'][0] if results.get('distances') else []
+        metadatas = results.get('metadatas', [[]])[0] if results.get('metadatas') else []
         
-        # Convert distance to similarity score (cosine similarity)
-        similarities = [(msg, 1 - dist) for msg, dist in zip(messages, distances)]
+        # Extract author from metadata, default to None if not present
+        similarities = []
+        for i, (msg, dist) in enumerate(zip(messages, distances)):
+            author = metadatas[i].get('author') if i < len(metadatas) and metadatas[i] else None
+            similarities.append((msg, 1 - dist, author))
         
         return similarities
     

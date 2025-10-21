@@ -41,17 +41,23 @@ async def generate_embedding(text):
             return embedding
 
 
-async def generate_embeddings_batch(texts, batch_size=20):
+async def generate_embeddings_batch(messages, batch_size=20):
     """
-    Generate embeddings for multiple texts with rate limiting.
+    Generate embeddings for multiple messages with rate limiting.
     
     Args:
-        texts: List of text strings
+        messages: List of tuples (author, text) or list of text strings (for backward compatibility)
         batch_size: Number of concurrent requests
         
     Returns:
         List of embedding vectors
     """
+    # Handle both formats: tuples and strings
+    if messages and isinstance(messages[0], tuple):
+        texts = [msg[1] for msg in messages]  # Extract text from (author, text) tuples
+    else:
+        texts = messages
+    
     embeddings = []
     
     for i in range(0, len(texts), batch_size):
@@ -76,14 +82,22 @@ def store_embeddings_in_chromadb(messages, embeddings, source_file):
     Uses content hash as ID to prevent duplicate messages.
     
     Args:
-        messages: List of message strings
+        messages: List of tuples (author, message_text) or list of message strings (for backward compatibility)
         embeddings: List of embedding vectors
         source_file: Name of the source file
     """
+    # Handle both formats: tuples (author, text) and plain strings
+    if messages and isinstance(messages[0], tuple):
+        authors = [msg[0] for msg in messages]
+        message_texts = [msg[1] for msg in messages]
+    else:
+        authors = None
+        message_texts = messages
+    
     # Generate message IDs using content hash for deduplication
     message_ids = [
         hashlib.sha256(msg.encode('utf-8')).hexdigest()
-        for msg in messages
+        for msg in message_texts
     ]
     
     # Get count before adding
@@ -91,7 +105,7 @@ def store_embeddings_in_chromadb(messages, embeddings, source_file):
     
     try:
         # Add messages to ChromaDB (will skip duplicates by ID)
-        add_messages(messages, embeddings, message_ids)
+        add_messages(message_texts, embeddings, message_ids, authors)
         
         # Get count after adding
         count_after = get_collection_count()

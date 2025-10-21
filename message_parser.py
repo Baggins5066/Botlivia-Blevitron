@@ -3,14 +3,14 @@ from pathlib import Path
 
 def parse_discord_export(file_path):
     """
-    Parse Discord export text file and extract pure message content.
-    Skips timestamps, authors, call logs, and header information.
+    Parse Discord export text file and extract message content with author information.
+    Skips timestamps, call logs, and header information.
     
     Args:
         file_path: Path to the Discord export .txt file
         
     Returns:
-        List of cleaned message strings
+        List of tuples (author, message_content)
     """
     messages = []
     
@@ -54,7 +54,8 @@ def parse_discord_export(file_path):
                             full_message += ' ' + next_line
                         i += 1
                     
-                    messages.append(full_message)
+                    # Store as tuple of (author, message)
+                    messages.append((username, full_message))
                 else:
                     i += 1
             else:
@@ -94,9 +95,9 @@ if __name__ == '__main__':
     
     print(f"\nTotal messages extracted: {len(messages)}")
     print("\nFirst 5 messages:")
-    for i, msg in enumerate(messages[:5], 1):
-        print(f"{i}. {msg}")
+    for i, (author, msg) in enumerate(messages[:5], 1):
+        print(f"{i}. [{author}] {msg}")
     
     print("\nLast 5 messages:")
-    for i, msg in enumerate(messages[-5:], 1):
-        print(f"{i}. {msg}")
+    for i, (author, msg) in enumerate(messages[-5:], 1):
+        print(f"{i}. [{author}] {msg}")
