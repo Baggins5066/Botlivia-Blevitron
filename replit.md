@@ -1,43 +1,46 @@
 # Blevitron Discord Bot
 
 ## Project Status
-✅ **Production Ready with RAG Memory** - Bot tested with semantic memory system (Oct 21, 2025)
+✅ **Pure Memory-Driven Bot** - Bot generates responses entirely from conversation database (Oct 21, 2025)
 
 ### Recent Changes (Oct 21, 2025)
-- **Writing Style Learning** - Bot now learns to write like Olivia from real message examples:
-  - Stores author information with each message in ChromaDB
-  - Prioritizes Olivia's (phrogsleg) messages when retrieving memories (70%+ of examples)
-  - Frames retrieved memories as "writing style examples" for the LLM to mimic
-  - Bot learns tone, abbreviations, capitalization, and phrasing from actual conversations
-  - Database re-processed with 636 messages including author metadata
-- **Migrated to ChromaDB for Local Storage** - Moved from PostgreSQL to file-based ChromaDB:
-  - All message embeddings now stored locally in `chroma_data/` directory
-  - No external database dependencies - fully self-contained project
+- **🔄 MAJOR TRANSFORMATION: Pure Memory-Driven Architecture** - Bot now has NO persona and synthesizes responses purely from database memories:
+  - **Removed all persona/personality** - No predefined character, behavior rules, or user-specific traits
+  - **Retrieves 40 relevant messages** (up from 5) for comprehensive context
+  - **All users treated equally** - No prioritization of specific users (removed Olivia preference)
+  - **Memories framed as conversation history** - LLM generates responses based solely on patterns in past messages
+  - **Author attribution included** - Each memory shows who said it: `[username]: message`
+  - **Broader similarity threshold (0.25)** - Captures more contextually relevant memories
+  - **Neutral decision logic** - Bot decides to reply based on generic engagement heuristics
+  - System instruction: "Generate responses based solely on the conversation history provided. You have no predefined personality."
+  
+- **ChromaDB Local Storage** - File-based vector database:
+  - All message embeddings stored locally in `chroma_data/` directory
   - 636 unique messages with 768-dimensional vectors and author metadata
-  - Migrated from PostgreSQL successfully with hash-based deduplication
+  - No external database dependencies - fully self-contained project
   - Easy to back up, deploy, and version control
+  
 - **RAG Memory System** - Vector database with semantic search:
   - ChromaDB for local vector similarity search with cosine distance
   - Google text-embedding-004 for generating 768-dimensional vectors
   - Semantic search retrieves relevant past messages before generating responses
-  - Bot has "memory" of 636 unique Discord conversations with author attribution
+  - Bot has "memory" of 636 unique Discord conversations
   - Easy ingestion pipeline for adding more message history
-- Code analysis and bug fixes:
-  - **Removed status cycling feature** - Eliminated unused status generation to simplify bot
-  - **Fixed personalized responses** - Now properly passes user Discord IDs to AI for persona-based interactions
-  - **Fixed mention system** - Rewrote mention replacement using regex word boundaries to prevent partial word matches (e.g., "liv" no longer matches inside "living")
-- Previous fixes:
-  - Added DM handling to prevent crashes when receiving direct messages
-  - Bot persona and personalized user interactions in config.py
+  
+- **Previous improvements**:
+  - Fixed mention system using regex word boundaries
+  - Added DM handling to prevent crashes
+  - Migrated from PostgreSQL to ChromaDB successfully
+  
 - Configured for VM deployment (always-on background worker)
 
 ### Main Components
 - **bot.py**: Core bot logic including Discord event handlers and message processing
-- **config.py**: Configuration settings, API keys, and personalized bot personas for each user
-- **llm.py**: LLM integration for AI-powered responses and decision-making with memory retrieval
+- **config.py**: Configuration settings and API keys (no persona - bot is pure memory-driven)
+- **llm.py**: LLM integration for AI-powered responses with neutral system instructions and comprehensive memory retrieval (40 messages)
 - **utils.py**: Utility functions for logging and smart user mention handling with regex
 - **chromadb_storage.py**: Local vector database storage using ChromaDB with cosine similarity
-- **memory_search.py**: Semantic search using vector embeddings with author-based prioritization for style learning
+- **memory_search.py**: Semantic search using vector embeddings, retrieves 40 messages with author attribution, all users treated equally
 - **message_parser.py**: Parser for Discord export text files to extract message content and author information
 - **embedding_pipeline.py**: Pipeline to generate embeddings and store them in ChromaDB
 - **migrate_postgres_to_chromadb.py**: One-time migration script from PostgreSQL to ChromaDB
@@ -63,8 +66,8 @@ The bot runs automatically via the "Discord Bot" workflow. It will:
 1. Validate that API keys are set
 2. Connect to Discord
 3. Load local ChromaDB vector database from `chroma_data/` directory
-4. Retrieve relevant memories from past conversations when responding
-5. Start responding to messages with context-aware AI
+4. Retrieve 40 relevant memories from past conversations when responding (with author attribution)
+5. Generate responses purely from conversation patterns in the database - NO predefined personality
 
 ### Adding More Training Data
 To add more Discord message history to the bot's memory:
