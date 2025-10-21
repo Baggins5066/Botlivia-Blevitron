@@ -82,9 +82,28 @@ Return ONLY the 5 statuses, one per line, no numbers or formatting."""
                 response_data = await resp.json()
                 if response_data and response_data.get("candidates"):
                     text = response_data["candidates"][0]["content"]["parts"][0]["text"]
-                    statuses = [line.strip() for line in text.split('\n') if line.strip()]
+                    
+                    # Parse and sanitize statuses
+                    import re
+                    statuses = []
+                    for line in text.split('\n'):
+                        line = line.strip()
+                        if not line:
+                            continue
+                        # Remove leading numbers, bullets, or dashes
+                        line = re.sub(r'^[\d\-\*\•]+[\.\):\s]*', '', line)
+                        line = line.strip()
+                        # Enforce max length
+                        if len(line) > 50:
+                            line = line[:47] + "..."
+                        # Avoid duplicates with base statuses
+                        if line and line.lower() not in [s.lower() for s in base_statuses]:
+                            statuses.append(line)
+                    
+                    # Cap to 5 statuses
+                    statuses = statuses[:5]
                     log(f"[STATUSES] Generated {len(statuses)} new statuses", Fore.YELLOW)
-                    return statuses
+                    return statuses if statuses else []
     except Exception as e:
         log(f"[STATUS GEN ERROR] {e}", Fore.RED)
 

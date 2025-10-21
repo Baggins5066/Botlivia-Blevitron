@@ -38,6 +38,11 @@ async def on_message(message):
 
     log(f"[INCOMING][#{message.channel}] {message.author}: {message.content}", Fore.CYAN)
 
+    # Handle DM channels (no guild)
+    if not message.guild:
+        log(f"[DM] Ignoring DM from {message.author}", Fore.YELLOW)
+        return
+
     perms = message.channel.permissions_for(message.guild.me)
     if not (perms.send_messages and perms.read_messages):
         return
@@ -88,7 +93,7 @@ async def cycle_presence():
         status = random.choice(config.ALL_STATUSES)
 
     log(f"[STATUS] Blevitron is now: {status}", Fore.YELLOW)
-    await client.change_presence(activity=discord.CustomActivity(name=status))
+    await client.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name=status))
 
 # -------- Run Bot --------
 if __name__ == "__main__":
