@@ -1,12 +1,10 @@
 import discord
-import random
-from discord.ext import tasks
 from collections import deque
 from colorama import Fore
 
 import config
 from utils import log, replace_with_mentions
-from llm import should_bot_reply, get_llm_response, generate_statuses
+from llm import should_bot_reply, get_llm_response
 
 # -------- Discord Bot Setup --------
 intents = discord.Intents.default()
@@ -17,14 +15,12 @@ client = discord.Client(intents=intents)
 
 conversation_history = {}   # short memory per channel
 processed_messages = deque(maxlen=1000)  # track processed message IDs to prevent duplicates
-generated_statuses = deque()
 
 # -------- Discord Events --------
 @client.event
 async def on_ready():
     if client.user:
         log(f"[READY] Logged in as {client.user} (ID: {client.user.id})", Fore.GREEN)
-    cycle_presence.start()
 
 @client.event
 async def on_message(message):
@@ -78,22 +74,6 @@ async def on_message(message):
             # Add bot's response to history
             history.append({"author": str(client.user), "content": response})
             conversation_history[message.channel.id] = history
-
-@tasks.loop(hours=1)
-async def cycle_presence():
-    global generated_statuses
-    if not generated_statuses:
-        new_statuses = await generate_statuses(config.ALL_STATUSES)
-        if new_statuses:
-            generated_statuses.extend(new_statuses)
-
-    if generated_statuses:
-        status = generated_statuses.popleft()
-    else:
-        status = random.choice(config.ALL_STATUSES)
-
-    log(f"[STATUS] Blevitron is now: {status}", Fore.YELLOW)
-    await client.change_presence(activity=discord.Activity(type=discord.ActivityType.playing, name=status))
 
 # -------- Run Bot --------
 if __name__ == "__main__":
