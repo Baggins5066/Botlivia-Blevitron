@@ -66,7 +66,7 @@ async def on_message(message):
                 f"Recent chat history:\n{history}\n\n"
                 f"User: {message.content}"
             )
-            response = await get_llm_response(prompt, current_user_id=message.author.id)
+            response = await get_llm_response(prompt, current_user_id=message.author.id, history=history)
             response = replace_with_mentions(response)
             log(f"[OUTGOING][#{message.channel}] {client.user}: {response}", Fore.GREEN)
             await message.channel.send(response)

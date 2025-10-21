@@ -3,6 +3,7 @@ import json
 from colorama import Fore
 from config import LLM_API_KEY, PERSONA_TEXT, BAGGINS_ID, SNAZZYDADDY_ID, PHROGSLEG_ID, CORN_ID, PUGMONKEY_ID, MEATBRO_ID, RESTORT_ID, TBL_ID, EVAN_ID, DROID_ID
 from utils import log
+from memory_search import get_relevant_memories
 
 # -------- AI Decision: Should Bot Reply? --------
 async def should_bot_reply(message, history):
@@ -49,8 +50,20 @@ Answer: """
     return False
 
 # -------- LLM Response --------
-async def get_llm_response(prompt, current_user_id=None):
+async def get_llm_response(prompt, current_user_id=None, history=None):
     persona = PERSONA_TEXT
+    
+    # Retrieve relevant memories from past conversations
+    try:
+        current_message = prompt.split("User: ")[-1] if "User: " in prompt else prompt
+        memories = await get_relevant_memories(current_message, history or [], limit=5)
+        
+        if memories:
+            memory_text = "\n".join([f"- {mem}" for mem in memories])
+            prompt = f"[Relevant past messages for context]:\n{memory_text}\n\n{prompt}"
+            log(f"[MEMORY] Retrieved {len(memories)} relevant memories", Fore.MAGENTA)
+    except Exception as e:
+        log(f"[MEMORY ERROR] {e}, continuing without memories", Fore.YELLOW)
     
     # Add user ID context to prompt so AI can apply personalized responses
     if current_user_id:
