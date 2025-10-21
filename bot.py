@@ -9,8 +9,6 @@ from utils import log
 # -------- Discord Bot Setup --------
 intents = discord.Intents.default()
 intents.message_content = True
-intents.guilds = True
-intents.members = True
 client = discord.Client(intents=intents)
 
 # -------- Discord Events --------
