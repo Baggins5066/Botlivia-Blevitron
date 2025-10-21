@@ -5,7 +5,7 @@ Stores and retrieves personalized information about Discord users.
 
 import json
 import os
-from typing import Optional, List, Dict, Any
+from typing import Optional, Dict, Any
 from datetime import datetime
 import threading
 
@@ -46,8 +46,7 @@ def _save_profiles(profiles: Dict[str, Any]):
 def create_or_update_user_profile(
     discord_id: int,
     username: str,
-    notes: Optional[List[str]] = None,
-    preferences: Optional[Dict[str, Any]] = None
+    description: str = ""
 ) -> bool:
     """
     Create or update a user profile.
@@ -55,8 +54,7 @@ def create_or_update_user_profile(
     Args:
         discord_id: Discord user ID
         username: Discord username
-        notes: List of notes about the user
-        preferences: User preferences dictionary
+        description: Description/persona for how the bot should interact with this user
     
     Returns:
         True if successful, False otherwise
@@ -71,16 +69,14 @@ def create_or_update_user_profile(
             if user_key in profiles:
                 # Update existing profile
                 profiles[user_key]['username'] = username
-                profiles[user_key]['notes'] = notes or []
-                profiles[user_key]['preferences'] = preferences or {}
+                profiles[user_key]['description'] = description
                 profiles[user_key]['updated_at'] = now
             else:
                 # Create new profile
                 profiles[user_key] = {
                     'discord_id': discord_id,
                     'username': username,
-                    'notes': notes or [],
-                    'preferences': preferences or {},
+                    'description': description,
                     'created_at': now,
                     'updated_at': now
                 }
@@ -116,96 +112,28 @@ def get_user_profile(discord_id: int) -> Optional[Dict[str, Any]]:
         return None
 
 
-def add_note_to_user(discord_id: int, username: str, note: str) -> bool:
+def set_user_description(discord_id: int, username: str, description: str) -> bool:
     """
-    Add a note to a user's profile.
+    Set the description for a user.
     
     Args:
         discord_id: Discord user ID
         username: Discord username
-        note: Note text to add
+        description: Description text
     
     Returns:
         True if successful, False otherwise
     
     Raises:
-        ValueError: If note is empty or only whitespace
+        ValueError: If description is empty or only whitespace
     """
-    if not note or not note.strip():
-        raise ValueError("Note cannot be empty")
+    if not description or not description.strip():
+        raise ValueError("Description cannot be empty")
     
-    try:
-        with file_lock:
-            profiles = _load_profiles()
-            user_key = str(discord_id)
-            now = datetime.utcnow().isoformat()
-            
-            if user_key in profiles:
-                # Add note to existing profile
-                if note not in profiles[user_key]['notes']:
-                    profiles[user_key]['notes'].append(note)
-                profiles[user_key]['username'] = username
-                profiles[user_key]['updated_at'] = now
-            else:
-                # Create new profile with note
-                profiles[user_key] = {
-                    'discord_id': discord_id,
-                    'username': username,
-                    'notes': [note],
-                    'preferences': {},
-                    'created_at': now,
-                    'updated_at': now
-                }
-            
-            _save_profiles(profiles)
-            return True
-    except Exception as e:
-        print(f"Error adding note to user: {e}")
-        return False
+    return create_or_update_user_profile(discord_id, username, description.strip())
 
 
-def set_user_notes(discord_id: int, username: str, notes: List[str]) -> bool:
-    """
-    Set (replace) all notes for a user.
-    
-    Args:
-        discord_id: Discord user ID
-        username: Discord username
-        notes: List of notes to set
-    
-    Returns:
-        True if successful, False otherwise
-    """
-    try:
-        with file_lock:
-            profiles = _load_profiles()
-            user_key = str(discord_id)
-            now = datetime.utcnow().isoformat()
-            
-            if user_key in profiles:
-                # Update notes on existing profile
-                profiles[user_key]['notes'] = notes
-                profiles[user_key]['username'] = username
-                profiles[user_key]['updated_at'] = now
-            else:
-                # Create new profile with notes
-                profiles[user_key] = {
-                    'discord_id': discord_id,
-                    'username': username,
-                    'notes': notes,
-                    'preferences': {},
-                    'created_at': now,
-                    'updated_at': now
-                }
-            
-            _save_profiles(profiles)
-            return True
-    except Exception as e:
-        print(f"Error setting user notes: {e}")
-        return False
-
-
-def get_all_profiles() -> List[Dict[str, Any]]:
+def get_all_profiles() -> list[Dict[str, Any]]:
     """
     Retrieve all user profiles.
     
@@ -233,17 +161,7 @@ def format_profile_context(discord_id: int) -> str:
     """
     profile = get_user_profile(discord_id)
     
-    if not profile:
+    if not profile or not profile.get('description', '').strip():
         return ""
     
-    # Filter out empty notes
-    notes = [note for note in profile.get('notes', []) if note and note.strip()]
-    
-    if not notes:
-        return ""
-    
-    context = f"User Profile for {profile['username']}:\n"
-    for note in notes:
-        context += f"- {note}\n"
-    
-    return context
+    return f"User Profile for {profile['username']}:\n{profile['description']}\n"

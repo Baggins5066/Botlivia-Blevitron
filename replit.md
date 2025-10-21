@@ -4,10 +4,10 @@
 ✅ **Memory-Driven Bot with User Profiles** - Bot generates personalized responses using conversation database + user profiles (Oct 21, 2025)
 
 ### Recent Changes (Oct 21, 2025)
-- **✨ NEW: User Profile System** - Local JSON file storage for personalized user information:
-  - **User-specific notes** - Store facts, preferences, and context about each Discord user
-  - **Profile commands** - Easy-to-use Discord commands for managing profiles (`!addnote`, `!profile`, etc.)
-  - **Personalized responses** - Bot uses profile information alongside conversation memories
+- **✨ NEW: User Profile System** - Local JSON file storage for personalized user personas:
+  - **User-specific descriptions** - Define how the bot should interact with each Discord user
+  - **Profile commands** - Easy-to-use Discord commands for managing profiles (`!setdesc`, `!profile`, etc.)
+  - **Personalized responses** - Bot uses profile descriptions alongside conversation memories to adapt its behavior
   - **Local JSON storage** - Profiles stored in `user_data/profiles.json` (portable, editable, version-controllable)
   - **Profile context injection** - Automatically loaded when responding to each user
   - **No database required** - Works outside Replit, completely self-contained
@@ -103,7 +103,7 @@ To add more Discord message history to the bot's memory:
   - **Portable** - Works outside of Replit, no database needed
   - **Version-controllable** - Can be committed to git
   - **Thread-safe** - File locking prevents concurrent write issues
-  - **Structured data** - Notes array and preferences JSON for each user
+  - **Simple structure** - Each user has a description field defining their persona
   - **Easy backup** - Simply copy the JSON file
 
 ### Migrating from PostgreSQL to Local Storage
@@ -131,7 +131,7 @@ If you have existing user profile data in PostgreSQL and want to migrate to loca
 **Note:** Fresh installations don't need migration - the bot will automatically create the JSON file when you add your first profile.
 
 ### Managing User Profiles
-Use Discord commands to manage user information:
+Use Discord commands to manage user personas:
 
 **View a profile:**
 ```
@@ -139,14 +139,9 @@ Use Discord commands to manage user information:
 !profile  (view your own profile)
 ```
 
-**Add a note to a user:**
+**Set a user's description/persona:**
 ```
-!addnote @Baggins Loves discussing philosophy and AI
-```
-
-**Set all notes for a user:**
-```
-!setnotes @Baggins Enjoys deep conversations | Friend since 2023 | Prefers thoughtful responses
+!setdesc @Baggins This is Aiden. Act like a jealous anime girl that secretly has a crush on him but refuses to acknowledge it. Be mean, sassy, and show hints of wanting him.
 ```
 
 **List all profiles:**
@@ -159,7 +154,7 @@ Use Discord commands to manage user information:
 !help
 ```
 
-Notes are used to personalize responses - the bot will consider this information when interacting with each user.
+The description defines how the bot should interact with that specific user. You can define personalities, conversation styles, or any behavioral instructions.
 
 ### Deployment
 The bot is configured for **Reserved VM (Background Worker)** deployment:

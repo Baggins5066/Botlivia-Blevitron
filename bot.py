@@ -7,8 +7,7 @@ from utils import log, replace_with_mentions
 from llm import should_bot_reply, get_llm_response
 from user_profiles_local import (
     get_user_profile, 
-    add_note_to_user, 
-    set_user_notes, 
+    set_user_description, 
     get_all_profiles
 )
 
@@ -42,69 +41,49 @@ async def handle_commands(message):
                 return
         
         profile = get_user_profile(target_user.id)
-        if profile and profile['notes']:
-            notes_text = "\n".join([f"• {note}" for note in profile['notes']])
-            response = f"**Profile for {target_user.display_name}:**\n{notes_text}"
+        if profile and profile.get('description', '').strip():
+            description = profile['description']
+            response = f"**Profile for {target_user.display_name}:**\n{description}"
         else:
             response = f"No profile found for {target_user.display_name}."
         
         await message.channel.send(response)
         log(f"[COMMAND] !profile for {target_user.display_name}", Fore.CYAN)
     
-    # !addnote [user] [note] - Add note to user profile
-    elif content.startswith('!addnote'):
+    # !setdesc [user] [description] - Set description for user profile
+    elif content.startswith('!setdesc'):
         parts = content.split(maxsplit=2)
         if len(parts) < 3 or not message.mentions:
-            await message.channel.send("❌ Usage: `!addnote @user [note text]`")
+            await message.channel.send("❌ Usage: `!setdesc @user [description text]`")
             return
         
         target_user = message.mentions[0]
-        note_text = parts[2]
+        description_text = parts[2]
         
         try:
-            success = add_note_to_user(target_user.id, target_user.display_name, note_text)
+            success = set_user_description(target_user.id, target_user.display_name, description_text)
             if success:
-                await message.channel.send(f"✅ Added note to {target_user.display_name}'s profile.")
-                log(f"[COMMAND] !addnote for {target_user.display_name}: {note_text}", Fore.CYAN)
+                await message.channel.send(f"✅ Updated description for {target_user.display_name}'s profile.")
+                log(f"[COMMAND] !setdesc for {target_user.display_name}", Fore.CYAN)
         except ValueError as e:
             await message.channel.send(f"❌ {str(e)}")
         except Exception as e:
-            log(f"[ERROR] !addnote failed: {e}", Fore.RED)
-            await message.channel.send("❌ Failed to add note. Database error.")
+            log(f"[ERROR] !setdesc failed: {e}", Fore.RED)
+            await message.channel.send("❌ Failed to update description.")
     
-    # !setnotes [user] [note1] | [note2] | ... - Set all notes for user
-    elif content.startswith('!setnotes'):
-        parts = content.split(maxsplit=2)
-        if len(parts) < 3 or not message.mentions:
-            await message.channel.send("❌ Usage: `!setnotes @user [note1] | [note2] | [note3]`")
-            return
-        
-        target_user = message.mentions[0]
-        notes_text = parts[2]
-        notes = [note.strip() for note in notes_text.split('|') if note.strip()]
-        
-        if not notes:
-            await message.channel.send("⚠️ Warning: No valid notes provided. This would clear all existing notes. Please provide at least one note separated by `|`")
-            return
-        
-        try:
-            success = set_user_notes(target_user.id, target_user.display_name, notes)
-            if success:
-                await message.channel.send(f"✅ Set {len(notes)} note(s) for {target_user.display_name}'s profile.")
-                log(f"[COMMAND] !setnotes for {target_user.display_name}: {len(notes)} notes", Fore.CYAN)
-        except Exception as e:
-            log(f"[ERROR] !setnotes failed: {e}", Fore.RED)
-            await message.channel.send("❌ Failed to set notes. Database error.")
-    
-    # !profiles - List all profiles (note: shows to everyone in channel)
+    # !profiles - List all profiles
     elif content.startswith('!profiles'):
         try:
             profiles = get_all_profiles()
             if profiles:
                 profile_list = []
                 for p in profiles:
-                    note_count = len(p['notes'])
-                    profile_list.append(f"• **{p['username']}** ({note_count} note{'s' if note_count != 1 else ''})")
+                    desc = p.get('description', '')
+                    preview = (desc[:50] + '...') if len(desc) > 50 else desc
+                    if preview:
+                        profile_list.append(f"• **{p['username']}**: {preview}")
+                    else:
+                        profile_list.append(f"• **{p['username']}**: (no description)")
                 response = "**All User Profiles:**\n" + "\n".join(profile_list)
             else:
                 response = "No user profiles found."
@@ -113,21 +92,20 @@ async def handle_commands(message):
             log(f"[COMMAND] !profiles - {len(profiles)} profiles", Fore.CYAN)
         except Exception as e:
             log(f"[ERROR] !profiles failed: {e}", Fore.RED)
-            await message.channel.send("❌ Failed to retrieve profiles. Database error.")
+            await message.channel.send("❌ Failed to retrieve profiles.")
     
     # !help - Show command help
     elif content.startswith('!help'):
         help_text = """**User Profile Commands:**
 • `!profile [@user]` - View user profile (defaults to your own)
-• `!addnote @user [text]` - Add a note to user's profile
-• `!setnotes @user [note1] | [note2] | ...` - Replace all notes for user
-• `!profiles` - List all user profiles (shows count only)
+• `!setdesc @user [text]` - Set description/persona for user
+• `!profiles` - List all user profiles
 • `!help` - Show this help message
 
 **Example:**
-`!addnote @Baggins Loves discussing philosophy and AI`
+`!setdesc @Baggins This is Aiden. Act like a jealous anime girl that secretly has a crush on him.`
 
-**Note:** User profiles help the bot personalize responses. Notes are visible to anyone who can use commands."""
+**Note:** User profiles define how the bot should interact with each person. Descriptions are visible to anyone who can use commands."""
         await message.channel.send(help_text)
         log(f"[COMMAND] !help", Fore.CYAN)
 
