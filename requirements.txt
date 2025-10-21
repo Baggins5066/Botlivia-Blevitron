@@ -1,6 +1,4 @@
 discord.py>=2.6.0
 colorama>=0.4.6
 aiohttp>=3.13.0
-pgvector
-psycopg2-binary
-asyncpg
+chromadb>=1.2.0

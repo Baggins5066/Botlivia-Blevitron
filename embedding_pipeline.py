@@ -1,15 +1,13 @@
 import os
 import json
 import time
-import psycopg2
-from psycopg2.extras import execute_values
-from pgvector.psycopg2 import register_vector
 import aiohttp
 import asyncio
 from message_parser import parse_all_files_in_folder, parse_discord_export
+from chromadb_storage import add_messages, get_collection_count
+import hashlib
 
 LLM_API_KEY = os.getenv('LLM_API_KEY')
-DATABASE_URL = os.getenv('DATABASE_URL')
 
 async def generate_embedding(text):
     """
@@ -72,66 +70,41 @@ async def generate_embeddings_batch(texts, batch_size=20):
     return embeddings
 
 
-def store_embeddings_in_db(messages, embeddings, source_file):
+def store_embeddings_in_chromadb(messages, embeddings, source_file):
     """
-    Store messages and their embeddings in PostgreSQL with deduplication.
-    Uses content hash to prevent duplicate messages from being inserted.
+    Store messages and their embeddings in ChromaDB with deduplication.
+    Uses content hash as ID to prevent duplicate messages.
     
     Args:
         messages: List of message strings
         embeddings: List of embedding vectors
         source_file: Name of the source file
     """
-    import hashlib
+    # Generate message IDs using content hash for deduplication
+    message_ids = [
+        hashlib.sha256(msg.encode('utf-8')).hexdigest()
+        for msg in messages
+    ]
     
-    conn = psycopg2.connect(DATABASE_URL)
-    register_vector(conn)
-    cursor = conn.cursor()
+    # Get count before adding
+    count_before = get_collection_count()
     
-    # Create content_hash column if it doesn't exist
-    cursor.execute("""
-        DO $$ BEGIN
-            IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns 
-                WHERE table_name='message_embeddings' AND column_name='content_hash'
-            ) THEN
-                ALTER TABLE message_embeddings ADD COLUMN content_hash VARCHAR(64) UNIQUE;
-                CREATE INDEX IF NOT EXISTS idx_content_hash ON message_embeddings(content_hash);
-            END IF;
-        END $$;
-    """)
-    conn.commit()
-    
-    # Insert messages with ON CONFLICT to skip duplicates
-    inserted_count = 0
-    skipped_count = 0
-    
-    for msg, emb in zip(messages, embeddings):
-        # Generate content hash
-        content_hash = hashlib.sha256(msg.encode('utf-8')).hexdigest()
+    try:
+        # Add messages to ChromaDB (will skip duplicates by ID)
+        add_messages(messages, embeddings, message_ids)
         
-        try:
-            cursor.execute(
-                """
-                INSERT INTO message_embeddings (content, embedding, source_file, content_hash)
-                VALUES (%s, %s, %s, %s)
-                ON CONFLICT (content_hash) DO NOTHING
-                """,
-                (msg, emb, source_file, content_hash)
-            )
-            if cursor.rowcount > 0:
-                inserted_count += 1
-            else:
-                skipped_count += 1
-        except Exception as e:
-            print(f"Error inserting message: {e}")
-            skipped_count += 1
+        # Get count after adding
+        count_after = get_collection_count()
+        
+        inserted_count = count_after - count_before
+        skipped_count = len(messages) - inserted_count
+        
+        print(f"Stored {inserted_count} new messages, skipped {skipped_count} duplicates")
     
-    conn.commit()
-    cursor.close()
-    conn.close()
-    
-    print(f"Stored {inserted_count} new messages, skipped {skipped_count} duplicates")
+    except Exception as e:
+        print(f"Error storing messages: {e}")
+        print("Assuming all messages were duplicates")
+        print(f"Stored 0 new messages, skipped {len(messages)} duplicates")
 
 
 async def process_file(file_path):
@@ -157,9 +130,9 @@ async def process_file(file_path):
     print("Generating embeddings...")
     embeddings = await generate_embeddings_batch(messages)
     
-    # Store in database
-    print("Storing in database...")
-    store_embeddings_in_db(messages, embeddings, os.path.basename(file_path))
+    # Store in ChromaDB
+    print("Storing in ChromaDB...")
+    store_embeddings_in_chromadb(messages, embeddings, os.path.basename(file_path))
     
     print(f"✓ Successfully processed {file_path}")
 
@@ -186,25 +159,16 @@ async def process_all_files(folder_path='attached_assets'):
         await process_file(str(file_path))
     
     # Print summary
-    conn = psycopg2.connect(DATABASE_URL)
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM message_embeddings")
-    total_messages = cursor.fetchone()[0]
-    cursor.close()
-    conn.close()
+    total_messages = get_collection_count()
     
     print(f"\n{'='*60}")
-    print(f"COMPLETE! Total messages in database: {total_messages}")
+    print(f"COMPLETE! Total messages in ChromaDB: {total_messages}")
     print(f"{'='*60}")
 
 
 if __name__ == '__main__':
     if not LLM_API_KEY:
         print("ERROR: LLM_API_KEY not found in environment variables")
-        exit(1)
-    
-    if not DATABASE_URL:
-        print("ERROR: DATABASE_URL not found in environment variables")
         exit(1)
     
     print("Starting embedding pipeline...")

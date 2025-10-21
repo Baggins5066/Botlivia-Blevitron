@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment variables (keep secrets private)
+.env
+.env.local
+
+# Logs
+*.log
+
+# Database (uncomment to exclude ChromaDB data from git)
+# chroma_data/
+
+# Temporary files
+.DS_Store
+*.tmp

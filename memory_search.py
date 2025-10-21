@@ -1,10 +1,9 @@
 import os
 import json
-import asyncpg
 import aiohttp
+from chromadb_storage import search_similar_messages as chromadb_search
 
 LLM_API_KEY = os.getenv('LLM_API_KEY')
-DATABASE_URL = os.getenv('DATABASE_URL')
 
 # Reusable aiohttp session for efficiency
 _http_session = None
@@ -52,7 +51,7 @@ async def generate_query_embedding(query_text):
 async def search_similar_messages(query_text, limit=8):
     """
     Search for messages similar to the query text using vector similarity.
-    Uses async database operations to avoid blocking the event loop.
+    Uses ChromaDB for local vector search without blocking the event loop.
     
     Args:
         query_text: The text to search for
@@ -65,28 +64,13 @@ async def search_similar_messages(query_text, limit=8):
         # Generate embedding for the query
         query_embedding = await generate_query_embedding(query_text)
         
-        # Convert embedding list to PostgreSQL vector format string
-        vector_str = '[' + ','.join(map(str, query_embedding)) + ']'
+        # Use ChromaDB to search for similar messages
+        # Run in executor to avoid blocking event loop (ChromaDB is synchronous)
+        import asyncio
+        loop = asyncio.get_event_loop()
+        results = await loop.run_in_executor(None, chromadb_search, query_embedding, limit)
         
-        # Connect to database with asyncpg
-        conn = await asyncpg.connect(DATABASE_URL)
-        
-        # Perform vector similarity search using cosine distance
-        results = await conn.fetch(
-            """
-            SELECT content, 1 - (embedding <=> $1::vector) as similarity
-            FROM message_embeddings
-            WHERE embedding IS NOT NULL
-            ORDER BY embedding <=> $1::vector
-            LIMIT $2
-            """,
-            vector_str, limit
-        )
-        
-        await conn.close()
-        
-        # Convert asyncpg Records to tuples
-        return [(row['content'], row['similarity']) for row in results]
+        return results
     
     except Exception as e:
         print(f"Error in search_similar_messages: {e}")
