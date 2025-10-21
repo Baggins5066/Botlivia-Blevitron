@@ -1,18 +1,24 @@
 # Blevitron Discord Bot
 
 ## Project Status
-✅ **Pure Memory-Driven Bot** - Bot generates responses entirely from conversation database (Oct 21, 2025)
+✅ **Memory-Driven Bot with User Profiles** - Bot generates personalized responses using conversation database + user profiles (Oct 21, 2025)
 
 ### Recent Changes (Oct 21, 2025)
-- **🔄 MAJOR TRANSFORMATION: Pure Memory-Driven Architecture** - Bot now has NO persona and synthesizes responses purely from database memories:
-  - **Removed all persona/personality** - No predefined character, behavior rules, or user-specific traits
-  - **Retrieves 40 relevant messages** (up from 5) for comprehensive context
-  - **All users treated equally** - No prioritization of specific users (removed Olivia preference)
-  - **Memories framed as conversation history** - LLM generates responses based solely on patterns in past messages
+- **✨ NEW: User Profile System** - PostgreSQL database for personalized user information:
+  - **User-specific notes** - Store facts, preferences, and context about each Discord user
+  - **Profile commands** - Easy-to-use Discord commands for managing profiles (`!addnote`, `!profile`, etc.)
+  - **Personalized responses** - Bot uses profile information alongside conversation memories
+  - **PostgreSQL storage** - Structured data in `user_profiles` table with notes array and preferences JSON
+  - **Profile context injection** - Automatically loaded when responding to each user
+  
+- **🔄 Memory-Driven Architecture** - Bot synthesizes responses from database memories:
+  - **Removed predefined persona/personality** - No hardcoded character traits
+  - **Retrieves 40 relevant messages** for comprehensive context
+  - **Memories framed as conversation history** - LLM generates responses based on patterns in past messages
   - **Author attribution included** - Each memory shows who said it: `[username]: message`
   - **Broader similarity threshold (0.25)** - Captures more contextually relevant memories
-  - **Neutral decision logic** - Bot decides to reply based on generic engagement heuristics
-  - System instruction: "Generate responses based solely on the conversation history provided. You have no predefined personality."
+  - **Neutral decision logic** - Bot decides to reply based on engagement heuristics
+  - System instruction includes user profile personalization
   
 - **ChromaDB Local Storage** - File-based vector database:
   - All message embeddings stored locally in `chroma_data/` directory
@@ -35,26 +41,29 @@
 - Configured for VM deployment (always-on background worker)
 
 ### Main Components
-- **bot.py**: Core bot logic including Discord event handlers and message processing
-- **config.py**: Configuration settings and API keys (no persona - bot is pure memory-driven)
-- **llm.py**: LLM integration for AI-powered responses with neutral system instructions and comprehensive memory retrieval (40 messages)
+- **bot.py**: Core bot logic including Discord event handlers, message processing, and profile management commands
+- **config.py**: Configuration settings and API keys
+- **llm.py**: LLM integration for AI-powered responses with user profile context and comprehensive memory retrieval (40 messages)
+- **user_profiles.py**: PostgreSQL database operations for user profile management (CRUD operations)
 - **utils.py**: Utility functions for logging and smart user mention handling with regex
 - **chromadb_storage.py**: Local vector database storage using ChromaDB with cosine similarity
-- **memory_search.py**: Semantic search using vector embeddings, retrieves 40 messages with author attribution, all users treated equally
+- **memory_search.py**: Semantic search using vector embeddings, retrieves 40 messages with author attribution
 - **message_parser.py**: Parser for Discord export text files to extract message content and author information
 - **embedding_pipeline.py**: Pipeline to generate embeddings and store them in ChromaDB
 - **migrate_postgres_to_chromadb.py**: One-time migration script from PostgreSQL to ChromaDB
-- **requirements.txt**: Python dependencies (discord.py, colorama, aiohttp, chromadb)
+- **requirements.txt**: Python dependencies (discord.py, colorama, aiohttp, chromadb, psycopg2-binary)
 
 ### Dependencies
 - `discord.py` (v2.6+): Discord API integration
 - `colorama` (v0.4.6+): Terminal color formatting
 - `aiohttp` (v3.13+): Async HTTP requests to Gemini API
 - `chromadb` (v1.2+): Local vector database for semantic similarity search
+- `psycopg2-binary`: PostgreSQL database adapter for user profiles
 
 ### Environment Variables Required
 - `DISCORD_BOT_TOKEN`: Discord bot authentication token
 - `LLM_API_KEY`: Google Gemini API key for embeddings and responses
+- `DATABASE_URL`: PostgreSQL connection string (automatically provided by Replit)
 
 ### Prerequisites
 1. Set up the required API keys as environment variables:
@@ -66,8 +75,11 @@ The bot runs automatically via the "Discord Bot" workflow. It will:
 1. Validate that API keys are set
 2. Connect to Discord
 3. Load local ChromaDB vector database from `chroma_data/` directory
-4. Retrieve 40 relevant memories from past conversations when responding (with author attribution)
-5. Generate responses purely from conversation patterns in the database - NO predefined personality
+4. Connect to PostgreSQL database for user profiles
+5. When responding, retrieve:
+   - User profile information (if available)
+   - 40 relevant memories from past conversations (with author attribution)
+6. Generate personalized responses using both profile data and conversation patterns
 
 ### Adding More Training Data
 To add more Discord message history to the bot's memory:
@@ -81,11 +93,45 @@ To add more Discord message history to the bot's memory:
 4. Bot will immediately have access to the new memories
 
 ### Data Storage
-- **Local Storage**: All embeddings stored in `chroma_data/` directory with author metadata
-- **Portable**: Entire database is part of the project - easy to backup and version control
-- **Deduplication**: Automatic hash-based deduplication prevents duplicate messages
-- **Author Tracking**: Each message includes author information for style learning
-- **By default, `chroma_data/` is committed to git** - to exclude it, uncomment the line in `.gitignore`
+- **ChromaDB (Local)**: All conversation embeddings stored in `chroma_data/` directory with author metadata
+  - Portable - entire database is part of the project
+  - Automatic hash-based deduplication
+  - By default, `chroma_data/` is committed to git
+- **PostgreSQL (User Profiles)**: Structured user information stored in database
+  - User profiles with notes array and preferences JSON
+  - Persistent across deployments
+  - Supports complex queries and relationships
+
+### Managing User Profiles
+Use Discord commands to manage user information:
+
+**View a profile:**
+```
+!profile @username
+!profile  (view your own profile)
+```
+
+**Add a note to a user:**
+```
+!addnote @Baggins Loves discussing philosophy and AI
+```
+
+**Set all notes for a user:**
+```
+!setnotes @Baggins Enjoys deep conversations | Friend since 2023 | Prefers thoughtful responses
+```
+
+**List all profiles:**
+```
+!profiles
+```
+
+**Get help:**
+```
+!help
+```
+
+Notes are used to personalize responses - the bot will consider this information when interacting with each user.
 
 ### Deployment
 The bot is configured for **Reserved VM (Background Worker)** deployment:

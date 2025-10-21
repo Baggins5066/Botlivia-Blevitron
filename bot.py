@@ -5,6 +5,12 @@ from colorama import Fore
 import config
 from utils import log, replace_with_mentions
 from llm import should_bot_reply, get_llm_response
+from user_profiles import (
+    get_user_profile, 
+    add_note_to_user, 
+    set_user_notes, 
+    get_all_profiles
+)
 
 # -------- Discord Bot Setup --------
 intents = discord.Intents.default()
@@ -15,6 +21,115 @@ client = discord.Client(intents=intents)
 
 conversation_history = {}   # short memory per channel
 processed_messages = deque(maxlen=1000)  # track processed message IDs to prevent duplicates
+
+# -------- Command Handlers --------
+async def handle_commands(message):
+    """Handle bot commands for profile management"""
+    content = message.content.strip()
+    
+    # !profile [user] - View user profile
+    if content.startswith('!profile'):
+        parts = content.split(maxsplit=1)
+        if len(parts) == 1:
+            # Show own profile
+            target_user = message.author
+        else:
+            # Show mentioned user's profile
+            if message.mentions:
+                target_user = message.mentions[0]
+            else:
+                await message.channel.send("❌ Please mention a user to view their profile.")
+                return
+        
+        profile = get_user_profile(target_user.id)
+        if profile and profile['notes']:
+            notes_text = "\n".join([f"• {note}" for note in profile['notes']])
+            response = f"**Profile for {target_user.display_name}:**\n{notes_text}"
+        else:
+            response = f"No profile found for {target_user.display_name}."
+        
+        await message.channel.send(response)
+        log(f"[COMMAND] !profile for {target_user.display_name}", Fore.CYAN)
+    
+    # !addnote [user] [note] - Add note to user profile
+    elif content.startswith('!addnote'):
+        parts = content.split(maxsplit=2)
+        if len(parts) < 3 or not message.mentions:
+            await message.channel.send("❌ Usage: `!addnote @user [note text]`")
+            return
+        
+        target_user = message.mentions[0]
+        note_text = parts[2]
+        
+        try:
+            success = add_note_to_user(target_user.id, target_user.display_name, note_text)
+            if success:
+                await message.channel.send(f"✅ Added note to {target_user.display_name}'s profile.")
+                log(f"[COMMAND] !addnote for {target_user.display_name}: {note_text}", Fore.CYAN)
+        except ValueError as e:
+            await message.channel.send(f"❌ {str(e)}")
+        except Exception as e:
+            log(f"[ERROR] !addnote failed: {e}", Fore.RED)
+            await message.channel.send("❌ Failed to add note. Database error.")
+    
+    # !setnotes [user] [note1] | [note2] | ... - Set all notes for user
+    elif content.startswith('!setnotes'):
+        parts = content.split(maxsplit=2)
+        if len(parts) < 3 or not message.mentions:
+            await message.channel.send("❌ Usage: `!setnotes @user [note1] | [note2] | [note3]`")
+            return
+        
+        target_user = message.mentions[0]
+        notes_text = parts[2]
+        notes = [note.strip() for note in notes_text.split('|') if note.strip()]
+        
+        if not notes:
+            await message.channel.send("⚠️ Warning: No valid notes provided. This would clear all existing notes. Please provide at least one note separated by `|`")
+            return
+        
+        try:
+            success = set_user_notes(target_user.id, target_user.display_name, notes)
+            if success:
+                await message.channel.send(f"✅ Set {len(notes)} note(s) for {target_user.display_name}'s profile.")
+                log(f"[COMMAND] !setnotes for {target_user.display_name}: {len(notes)} notes", Fore.CYAN)
+        except Exception as e:
+            log(f"[ERROR] !setnotes failed: {e}", Fore.RED)
+            await message.channel.send("❌ Failed to set notes. Database error.")
+    
+    # !profiles - List all profiles (note: shows to everyone in channel)
+    elif content.startswith('!profiles'):
+        try:
+            profiles = get_all_profiles()
+            if profiles:
+                profile_list = []
+                for p in profiles:
+                    note_count = len(p['notes'])
+                    profile_list.append(f"• **{p['username']}** ({note_count} note{'s' if note_count != 1 else ''})")
+                response = "**All User Profiles:**\n" + "\n".join(profile_list)
+            else:
+                response = "No user profiles found."
+            
+            await message.channel.send(response)
+            log(f"[COMMAND] !profiles - {len(profiles)} profiles", Fore.CYAN)
+        except Exception as e:
+            log(f"[ERROR] !profiles failed: {e}", Fore.RED)
+            await message.channel.send("❌ Failed to retrieve profiles. Database error.")
+    
+    # !help - Show command help
+    elif content.startswith('!help'):
+        help_text = """**User Profile Commands:**
+• `!profile [@user]` - View user profile (defaults to your own)
+• `!addnote @user [text]` - Add a note to user's profile
+• `!setnotes @user [note1] | [note2] | ...` - Replace all notes for user
+• `!profiles` - List all user profiles (shows count only)
+• `!help` - Show this help message
+
+**Example:**
+`!addnote @Baggins Loves discussing philosophy and AI`
+
+**Note:** User profiles help the bot personalize responses. Notes are visible to anyone who can use commands."""
+        await message.channel.send(help_text)
+        log(f"[COMMAND] !help", Fore.CYAN)
 
 # -------- Discord Events --------
 @client.event
@@ -41,6 +156,11 @@ async def on_message(message):
 
     perms = message.channel.permissions_for(message.guild.me)
     if not (perms.send_messages and perms.read_messages):
+        return
+
+    # Handle profile management commands
+    if message.content.startswith('!'):
+        await handle_commands(message)
         return
 
     history = conversation_history.get(message.channel.id, [])

@@ -4,6 +4,7 @@ from colorama import Fore
 from config import LLM_API_KEY
 from utils import log
 from memory_search import get_relevant_memories
+from user_profiles import format_profile_context
 
 # -------- AI Decision: Should Bot Reply? --------
 async def should_bot_reply(message, history):
@@ -51,6 +52,16 @@ Answer: """
 
 # -------- LLM Response --------
 async def get_llm_response(prompt, current_user_id=None, history=None):
+    # Get user profile context for personalization
+    user_context = ""
+    if current_user_id:
+        try:
+            user_context = format_profile_context(current_user_id)
+            if user_context:
+                log(f"[PROFILE] Loaded profile for user {current_user_id}", Fore.CYAN)
+        except Exception as e:
+            log(f"[PROFILE ERROR] {e}, continuing without user profile", Fore.YELLOW)
+    
     # Retrieve relevant memories from past conversations (all users treated equally)
     try:
         current_message = prompt.split("User: ")[-1] if "User: " in prompt else prompt
@@ -59,16 +70,33 @@ async def get_llm_response(prompt, current_user_id=None, history=None):
         if memories:
             memory_text = "\n".join(memories)
             # Use memories as the primary context for generating response
-            full_prompt = f"""[CONVERSATION HISTORY FROM DATABASE - Use these past messages to inform your response]:
-{memory_text}
+            context_parts = []
+            
+            if user_context:
+                context_parts.append(user_context)
+            
+            context_parts.append(f"""[CONVERSATION HISTORY FROM DATABASE - Use these past messages to inform your response]:
+{memory_text}""")
+            
+            full_context = "\n\n".join(context_parts)
+            
+            full_prompt = f"""{full_context}
 
 [CURRENT CONVERSATION]:
 {prompt}
 
-Based on the conversation history above, formulate an appropriate response. Draw from the patterns, topics, and context you see in the database messages."""
+Based on the conversation history above{' and user profile information' if user_context else ''}, formulate an appropriate response. Draw from the patterns, topics, and context you see in the database messages."""
             log(f"[MEMORY] Retrieved {len(memories)} relevant messages from database", Fore.MAGENTA)
         else:
-            full_prompt = prompt
+            if user_context:
+                full_prompt = f"""{user_context}
+
+[CURRENT CONVERSATION]:
+{prompt}
+
+Based on the user profile information above, formulate an appropriate personalized response."""
+            else:
+                full_prompt = prompt
             log(f"[MEMORY] No relevant memories found, using current context only", Fore.YELLOW)
     except Exception as e:
         log(f"[MEMORY ERROR] {e}, continuing without memories", Fore.YELLOW)
@@ -76,7 +104,7 @@ Based on the conversation history above, formulate an appropriate response. Draw
 
     payload = {
         "contents": [{"parts": [{"text": full_prompt}]}],
-        "systemInstruction": {"parts": [{"text": "You are a Discord bot. Generate responses based solely on the conversation history provided. Synthesize your response from the patterns, style, and context you observe in the database messages. You have no predefined personality."}]}
+        "systemInstruction": {"parts": [{"text": "You are a Discord bot. Generate responses based on the conversation history and any user profile information provided. Synthesize your response from the patterns, style, and context you observe in the database messages. Use profile information to personalize responses when available. You have no predefined personality."}]}
     }
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={LLM_API_KEY}"

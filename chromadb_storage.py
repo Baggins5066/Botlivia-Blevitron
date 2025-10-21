@@ -164,9 +164,9 @@ def search_similar_messages(query_embedding, limit=8):
         
         # Convert results to list of tuples (message, similarity, author)
         # ChromaDB returns distances, we convert to similarity (1 - distance)
-        messages = results['documents'][0] if results.get('documents') else []
-        distances = results['distances'][0] if results.get('distances') else []
-        metadatas = results.get('metadatas', [[]])[0] if results.get('metadatas') else []
+        messages = results['documents'][0] if results and results.get('documents') else []
+        distances = results['distances'][0] if results and results.get('distances') else []
+        metadatas = results['metadatas'][0] if results and results.get('metadatas') else []
         
         # Extract author from metadata, default to None if not present
         similarities = []
