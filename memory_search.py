@@ -77,52 +77,32 @@ async def search_similar_messages(query_text, limit=8):
         return []
 
 
-async def get_relevant_memories(current_message, conversation_history, limit=5):
+async def get_relevant_memories(current_message, conversation_history, limit=40):
     """
     Get relevant memories based on current message and recent conversation.
-    Prioritizes messages from Olivia (phrogsleg/liv!) for style learning.
+    Retrieves all messages equally with no user prioritization.
     
     Args:
         current_message: The current message text
         conversation_history: List of recent messages for context
-        limit: Number of memories to retrieve
+        limit: Number of memories to retrieve (default 40)
         
     Returns:
-        List of relevant message strings
+        List of relevant message strings with author attribution
     """
     # Combine current message with recent context for better search
-    context = " ".join([msg.get('content', '') for msg in conversation_history[-3:]])
+    context = " ".join([msg.get('content', '') for msg in conversation_history[-5:]])
     search_query = f"{context} {current_message}"
     
-    # Search for more messages than needed to filter for Olivia's
-    # Retrieve 3x the limit to ensure we have enough after filtering
-    results = await search_similar_messages(search_query, limit=limit * 3)
+    # Search for relevant messages
+    results = await search_similar_messages(search_query, limit=limit)
     
-    # Separate Olivia's messages from others
-    olivia_messages = []
-    other_messages = []
-    
+    # Filter by minimum similarity and format with author
+    memories = []
     for content, similarity, author in results:
-        if similarity > 0.3:  # Only include messages with decent similarity
-            # Check if author is Olivia (various display names she uses)
-            is_olivia = author and any(name in author.lower() for name in ['phrogsleg', 'liv!', 'liv', 'olivia'])
-            
-            if is_olivia:
-                olivia_messages.append(content)
-            else:
-                other_messages.append(content)
-    
-    # Prioritize Olivia's messages: use mostly her messages, fill rest with others if needed
-    # Aim for at least 70% of results to be from Olivia
-    olivia_count = min(len(olivia_messages), max(int(limit * 0.7), limit - 2))
-    other_count = limit - olivia_count
-    
-    memories = olivia_messages[:olivia_count] + other_messages[:other_count]
-    
-    # If we don't have enough, add more from whichever pool has them
-    if len(memories) < limit:
-        remaining = limit - len(memories)
-        memories.extend(olivia_messages[olivia_count:olivia_count + remaining])
+        if similarity > 0.25:  # Include messages with decent similarity
+            author_str = f"[{author}]" if author else "[Unknown]"
+            memories.append(f"{author_str}: {content}")
     
     return memories[:limit]
 

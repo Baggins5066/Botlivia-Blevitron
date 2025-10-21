@@ -1,7 +1,7 @@
 import aiohttp
 import json
 from colorama import Fore
-from config import LLM_API_KEY, PERSONA_TEXT, BAGGINS_ID, SNAZZYDADDY_ID, PHROGSLEG_ID, CORN_ID, PUGMONKEY_ID, MEATBRO_ID, RESTORT_ID, TBL_ID, EVAN_ID, DROID_ID
+from config import LLM_API_KEY
 from utils import log
 from memory_search import get_relevant_memories
 
@@ -10,7 +10,7 @@ async def should_bot_reply(message, history):
     # Build context from recent conversation
     history_text = "\n".join([f"{h['author']}: {h['content']}" for h in history[-10:]])
 
-    decision_prompt = f"""You are deciding whether "Botlivia Blevitron" (a Discord bot) should respond to this message.
+    decision_prompt = f"""You are deciding whether a Discord bot should respond to this message.
 
 Recent conversation:
 {history_text}
@@ -19,11 +19,11 @@ Recent conversation:
 Current message from {message.author}: {message.content}
 
 Respond with ONLY "YES" or "NO" based on these rules:
-- YES if the message is directed at the bot, mentions the bot, or is a question/statement the bot should engage with
-- YES if the conversation is about video games, joining vc, drinking and partying, or topics Blevitron would care about
-- YES if someone is asking for advice or seems to need the bot's input
+- YES if the message is directed at the bot or mentions the bot
+- YES if the conversation seems to expect or need a response from the bot
+- YES if someone is asking a question or making a statement that warrants engagement
 - NO if it's a casual chat between other users that doesn't need bot input
-- NO if the message is very short/simple like "ok", "lol", "nice" (unless directly replying to the bot) OR is otherwise ending the conversation.
+- NO if the message is very short/simple like "ok", "lol", "nice" (unless directly replying to the bot)
 - NO if the bot just responded recently (within last 2 messages) unless directly addressed
 
 Current message from {message.author}: {message.content}
@@ -51,28 +51,32 @@ Answer: """
 
 # -------- LLM Response --------
 async def get_llm_response(prompt, current_user_id=None, history=None):
-    persona = PERSONA_TEXT
-    
-    # Retrieve relevant memories from past conversations (prioritizing Olivia's messages)
+    # Retrieve relevant memories from past conversations (all users treated equally)
     try:
         current_message = prompt.split("User: ")[-1] if "User: " in prompt else prompt
-        memories = await get_relevant_memories(current_message, history or [], limit=5)
+        memories = await get_relevant_memories(current_message, history or [], limit=40)
         
         if memories:
-            memory_text = "\n".join([f"- {mem}" for mem in memories])
-            # Frame memories as writing style examples to learn from
-            prompt = f"[WRITING STYLE EXAMPLES - Match this tone, style, abbreviations, and phrasing]:\n{memory_text}\n\n{prompt}"
-            log(f"[MEMORY] Retrieved {len(memories)} style examples", Fore.MAGENTA)
+            memory_text = "\n".join(memories)
+            # Use memories as the primary context for generating response
+            full_prompt = f"""[CONVERSATION HISTORY FROM DATABASE - Use these past messages to inform your response]:
+{memory_text}
+
+[CURRENT CONVERSATION]:
+{prompt}
+
+Based on the conversation history above, formulate an appropriate response. Draw from the patterns, topics, and context you see in the database messages."""
+            log(f"[MEMORY] Retrieved {len(memories)} relevant messages from database", Fore.MAGENTA)
+        else:
+            full_prompt = prompt
+            log(f"[MEMORY] No relevant memories found, using current context only", Fore.YELLOW)
     except Exception as e:
         log(f"[MEMORY ERROR] {e}, continuing without memories", Fore.YELLOW)
-    
-    # Add user ID context to prompt so AI can apply personalized responses
-    if current_user_id:
-        prompt = f"[User Discord ID: {current_user_id}]\n\n{prompt}"
+        full_prompt = prompt
 
     payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "systemInstruction": {"parts": [{"text": persona}]}
+        "contents": [{"parts": [{"text": full_prompt}]}],
+        "systemInstruction": {"parts": [{"text": "You are a Discord bot. Generate responses based solely on the conversation history provided. Synthesize your response from the patterns, style, and context you observe in the database messages. You have no predefined personality."}]}
     }
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={LLM_API_KEY}"
@@ -86,7 +90,7 @@ async def get_llm_response(prompt, current_user_id=None, history=None):
     except Exception as e:
         log(f"[LLM ERROR] {e}", Fore.RED)
 
-    return "uh idk"
+    return "idk"
 
 # -------- Generate Custom Statuses --------
 async def generate_statuses(base_statuses):
