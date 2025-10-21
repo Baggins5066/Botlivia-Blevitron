@@ -51,6 +51,10 @@ Answer: """
 # -------- LLM Response --------
 async def get_llm_response(prompt, current_user_id=None):
     persona = PERSONA_TEXT
+    
+    # Add user ID context to prompt so AI can apply personalized responses
+    if current_user_id:
+        prompt = f"[User Discord ID: {current_user_id}]\n\n{prompt}"
 
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
