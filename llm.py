@@ -4,7 +4,7 @@ from colorama import Fore
 from config import LLM_API_KEY
 from utils import log
 from memory_search import get_relevant_memories
-from user_profiles import format_profile_context
+from user_profiles_local import format_profile_context
 
 # -------- AI Decision: Should Bot Reply? --------
 async def should_bot_reply(message, history):

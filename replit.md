@@ -4,12 +4,13 @@
 ✅ **Memory-Driven Bot with User Profiles** - Bot generates personalized responses using conversation database + user profiles (Oct 21, 2025)
 
 ### Recent Changes (Oct 21, 2025)
-- **✨ NEW: User Profile System** - PostgreSQL database for personalized user information:
+- **✨ NEW: User Profile System** - Local JSON file storage for personalized user information:
   - **User-specific notes** - Store facts, preferences, and context about each Discord user
   - **Profile commands** - Easy-to-use Discord commands for managing profiles (`!addnote`, `!profile`, etc.)
   - **Personalized responses** - Bot uses profile information alongside conversation memories
-  - **PostgreSQL storage** - Structured data in `user_profiles` table with notes array and preferences JSON
+  - **Local JSON storage** - Profiles stored in `user_data/profiles.json` (portable, editable, version-controllable)
   - **Profile context injection** - Automatically loaded when responding to each user
+  - **No database required** - Works outside Replit, completely self-contained
   
 - **🔄 Memory-Driven Architecture** - Bot synthesizes responses from database memories:
   - **Removed predefined persona/personality** - No hardcoded character traits
@@ -44,26 +45,25 @@
 - **bot.py**: Core bot logic including Discord event handlers, message processing, and profile management commands
 - **config.py**: Configuration settings and API keys
 - **llm.py**: LLM integration for AI-powered responses with user profile context and comprehensive memory retrieval (40 messages)
-- **user_profiles.py**: PostgreSQL database operations for user profile management (CRUD operations)
+- **user_profiles_local.py**: Local JSON file operations for user profile management (CRUD operations)
 - **utils.py**: Utility functions for logging and smart user mention handling with regex
 - **chromadb_storage.py**: Local vector database storage using ChromaDB with cosine similarity
 - **memory_search.py**: Semantic search using vector embeddings, retrieves 40 messages with author attribution
 - **message_parser.py**: Parser for Discord export text files to extract message content and author information
 - **embedding_pipeline.py**: Pipeline to generate embeddings and store them in ChromaDB
-- **migrate_postgres_to_chromadb.py**: One-time migration script from PostgreSQL to ChromaDB
-- **requirements.txt**: Python dependencies (discord.py, colorama, aiohttp, chromadb, psycopg2-binary)
+- **migrate_postgres_to_local.py**: One-time migration script from PostgreSQL to local JSON storage
+- **requirements.txt**: Python dependencies (discord.py, colorama, aiohttp, chromadb)
 
 ### Dependencies
 - `discord.py` (v2.6+): Discord API integration
 - `colorama` (v0.4.6+): Terminal color formatting
 - `aiohttp` (v3.13+): Async HTTP requests to Gemini API
 - `chromadb` (v1.2+): Local vector database for semantic similarity search
-- `psycopg2-binary`: PostgreSQL database adapter for user profiles
+- `numpy`: Numerical operations for embeddings
 
 ### Environment Variables Required
 - `DISCORD_BOT_TOKEN`: Discord bot authentication token
 - `LLM_API_KEY`: Google Gemini API key for embeddings and responses
-- `DATABASE_URL`: PostgreSQL connection string (automatically provided by Replit)
 
 ### Prerequisites
 1. Set up the required API keys as environment variables:
@@ -75,7 +75,7 @@ The bot runs automatically via the "Discord Bot" workflow. It will:
 1. Validate that API keys are set
 2. Connect to Discord
 3. Load local ChromaDB vector database from `chroma_data/` directory
-4. Connect to PostgreSQL database for user profiles
+4. Load user profiles from local `user_data/profiles.json` file
 5. When responding, retrieve:
    - User profile information (if available)
    - 40 relevant memories from past conversations (with author attribution)
@@ -97,10 +97,38 @@ To add more Discord message history to the bot's memory:
   - Portable - entire database is part of the project
   - Automatic hash-based deduplication
   - By default, `chroma_data/` is committed to git
-- **PostgreSQL (User Profiles)**: Structured user information stored in database
-  - User profiles with notes array and preferences JSON
-  - Persistent across deployments
-  - Supports complex queries and relationships
+  
+- **User Profiles (Local JSON)**: User information stored in `user_data/profiles.json`
+  - **Human-readable** - Easy to edit manually in any text editor
+  - **Portable** - Works outside of Replit, no database needed
+  - **Version-controllable** - Can be committed to git
+  - **Thread-safe** - File locking prevents concurrent write issues
+  - **Structured data** - Notes array and preferences JSON for each user
+  - **Easy backup** - Simply copy the JSON file
+
+### Migrating from PostgreSQL to Local Storage
+If you have existing user profile data in PostgreSQL and want to migrate to local JSON storage:
+
+1. **Temporarily install PostgreSQL driver:**
+   ```bash
+   pip install psycopg2-binary
+   ```
+
+2. **Run the migration script:**
+   ```bash
+   python migrate_postgres_to_local.py
+   ```
+
+3. **Verify the migration:**
+   - Check that `user_data/profiles.json` contains your data
+   - Test the bot to ensure profiles load correctly
+
+4. **Clean up (optional):**
+   ```bash
+   pip uninstall psycopg2-binary
+   ```
+
+**Note:** Fresh installations don't need migration - the bot will automatically create the JSON file when you add your first profile.
 
 ### Managing User Profiles
 Use Discord commands to manage user information:

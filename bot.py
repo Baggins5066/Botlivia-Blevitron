@@ -5,7 +5,7 @@ from colorama import Fore
 import config
 from utils import log, replace_with_mentions
 from llm import should_bot_reply, get_llm_response
-from user_profiles import (
+from user_profiles_local import (
     get_user_profile, 
     add_note_to_user, 
     set_user_notes, 
