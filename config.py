@@ -2,15 +2,11 @@ import os
 
 # -------- BOT CONFIG --------
 DISCORD_BOT_TOKEN = os.environ.get("DISCORD_BOT_TOKEN")
+LLM_API_KEY = os.environ.get("LLM_API_KEY")
 
-# Bot's name
-BOT_NAME = "Blevitron"
+# User IDs for mentions
+BAGGINS_ID = 280188106412523521
+SNAZZYDADDY_ID = 581161136129310730
 
-# Bot's presence statuses
-ALL_STATUSES = [
-    "Ready to go!",
-    "Just hanging out",
-    "Chillin",
-    "Online and active",
-    "Waiting for commands",
-]
+# Bot's persona
+PERSONA_TEXT = ()
