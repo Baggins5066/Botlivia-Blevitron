@@ -11,7 +11,7 @@ from user_profiles_local import (
     set_user_description, 
     get_all_profiles
 )
-from message_storage import store_message_async, clean_message_content
+from message_storage import clean_message_content
 
 # -------- Discord Bot Setup --------
 intents = discord.Intents.default()
@@ -143,10 +143,6 @@ async def on_message(message):
         await handle_commands(message)
         return
 
-    # Store user message in ChromaDB with clean username and Discord message ID
-    username = message.author.display_name or message.author.name
-    asyncio.create_task(store_message_async(username, message.content, message.id))
-
     # Clean message content for conversation history (remove user ID mentions)
     cleaned_content = clean_message_content(message.content)
     
@@ -179,11 +175,6 @@ async def on_message(message):
             response = replace_with_mentions(response)
             log(f"[OUTGOING][#{message.channel}] {client.user}: {response}", Fore.GREEN)
             await message.channel.send(response)
-
-            # Store bot's response in ChromaDB (cleaned version)
-            if client.user:
-                bot_username = client.user.display_name or client.user.name
-                asyncio.create_task(store_message_async(bot_username, response))
 
             # Add bot's response to history (also cleaned)
             cleaned_response = clean_message_content(response)
