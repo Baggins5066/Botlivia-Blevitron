@@ -1,6 +1,7 @@
 import discord
 from collections import deque
 from colorama import Fore
+import asyncio
 
 import config
 from utils import log, replace_with_mentions
@@ -10,6 +11,7 @@ from user_profiles_local import (
     set_user_description, 
     get_all_profiles
 )
+from message_storage import store_message_async, clean_message_content
 
 # -------- Discord Bot Setup --------
 intents = discord.Intents.default()
@@ -141,8 +143,15 @@ async def on_message(message):
         await handle_commands(message)
         return
 
+    # Store user message in ChromaDB with clean username and Discord message ID
+    username = message.author.display_name or message.author.name
+    asyncio.create_task(store_message_async(username, message.content, message.id))
+
+    # Clean message content for conversation history (remove user ID mentions)
+    cleaned_content = clean_message_content(message.content)
+    
     history = conversation_history.get(message.channel.id, [])
-    history.append({"author": str(message.author), "content": message.content})
+    history.append({"author": str(message.author), "content": cleaned_content})
     if len(history) > 10:
         history = history[-10:]
     conversation_history[message.channel.id] = history
@@ -160,17 +169,25 @@ async def on_message(message):
 
     if should_reply and perms.send_messages:
         async with message.channel.typing():
+            # Clean the current message before sending to LLM
+            current_message_cleaned = clean_message_content(message.content)
             prompt = (
                 f"Recent chat history:\n{history}\n\n"
-                f"User: {message.content}"
+                f"User: {current_message_cleaned}"
             )
             response = await get_llm_response(prompt, current_user_id=message.author.id, history=history)
             response = replace_with_mentions(response)
             log(f"[OUTGOING][#{message.channel}] {client.user}: {response}", Fore.GREEN)
             await message.channel.send(response)
 
-            # Add bot's response to history
-            history.append({"author": str(client.user), "content": response})
+            # Store bot's response in ChromaDB (cleaned version)
+            if client.user:
+                bot_username = client.user.display_name or client.user.name
+                asyncio.create_task(store_message_async(bot_username, response))
+
+            # Add bot's response to history (also cleaned)
+            cleaned_response = clean_message_content(response)
+            history.append({"author": str(client.user), "content": cleaned_response})
             conversation_history[message.channel.id] = history
 
 # -------- Run Bot --------

@@ -32,6 +32,12 @@ def parse_discord_export(file_path):
         
         if match:
             username = match.group(1)
+            # Clean username: remove any Discord user ID mentions like <@123456>
+            username = re.sub(r'<@!?\d+>', '', username).strip()
+            # If username is empty after cleaning, skip this message
+            if not username:
+                i += 1
+                continue
             i += 1
             
             # Next line should be the message content
