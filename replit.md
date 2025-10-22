@@ -11,12 +11,9 @@
   - **Context-aware responses** - Profiles provide facts like "This is Aiden, your ex-boyfriend" while memories show how you actually spoke
   - Converted all user profiles from behavioral instructions to factual relationship context
 
-- **🔧 User Recognition System** - Bot now properly recognizes people:
-  - **Live message storage** - All new conversations are automatically saved to ChromaDB with proper usernames
-  - **User mention cleaning** - Discord user IDs like `<@123456>` are replaced with `[user]` placeholder
-  - **Unique message IDs** - Uses Discord message IDs to prevent data loss from duplicate messages
+- **🔧 User Recognition System** - Bot properly recognizes people:
+  - **User mention cleaning** - Discord user IDs like `<@123456>` are replaced with `[user]` placeholder in conversation history
   - **Clean prompts** - Both short-term history and current messages are sanitized before sending to LLM
-  - **Author attribution** - Every stored message includes the proper display name of who said it
   - No more user ID confusion - bot responds using actual usernames instead of numeric IDs
 
 ### Recent Changes (Oct 21, 2025)
@@ -58,8 +55,8 @@
 - Configured for VM deployment (always-on background worker)
 
 ### Main Components
-- **bot.py**: Core bot logic including Discord event handlers, message processing, live message storage, and profile management commands
-- **message_storage.py**: Async message storage handler that cleans and stores live Discord messages in ChromaDB
+- **bot.py**: Core bot logic including Discord event handlers, message processing, and profile management commands
+- **message_storage.py**: Message cleaning utilities for sanitizing Discord-specific formatting
 - **config.py**: Configuration settings and API keys
 - **llm.py**: LLM integration for AI-powered responses - learns speaking style from memories, uses profiles for factual context (retrieves 40 messages)
 - **user_profiles_local.py**: Local JSON file operations for user profile management (CRUD operations)
