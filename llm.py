@@ -85,7 +85,7 @@ async def get_llm_response(prompt, current_user_id=None, history=None):
 [CURRENT CONVERSATION]:
 {prompt}
 
-Based on the conversation history above{' and user profile information' if user_context else ''}, formulate an appropriate response. Draw from the patterns, topics, and context you see in the database messages."""
+{'IMPORTANT: Respond according to the user profile instructions above. The profile defines how you should speak to THIS specific person.' if user_context else ''} Use the conversation history for factual context and topics, but {'follow the profile for your personality and tone' if user_context else 'respond naturally based on the conversation patterns'}."""
             log(f"[MEMORY] Retrieved {len(memories)} relevant messages from database", Fore.MAGENTA)
         else:
             if user_context:
@@ -104,7 +104,7 @@ Based on the user profile information above, formulate an appropriate personaliz
 
     payload = {
         "contents": [{"parts": [{"text": full_prompt}]}],
-        "systemInstruction": {"parts": [{"text": "You are a Discord bot. Generate responses based on the conversation history and any user profile information provided. Synthesize your response from the patterns, style, and context you observe in the database messages. Use profile information to personalize responses when available. You have no predefined personality."}]}
+        "systemInstruction": {"parts": [{"text": "You are Blevitron, a Discord bot. CRITICAL: Each user has a unique profile that defines exactly how you should speak to and treat THAT SPECIFIC PERSON. You MUST follow the user profile instructions precisely - the profile defines your personality, tone, and behavior when talking to that individual user. Use conversation history for context and facts, but the user profile determines your speaking style and attitude. Different users get completely different personalities and treatment based on their individual profiles."}]}
     }
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={LLM_API_KEY}"
