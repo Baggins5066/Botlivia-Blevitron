@@ -100,14 +100,14 @@ async def handle_commands(message):
     elif content.startswith('!help'):
         help_text = """**User Profile Commands:**
 • `!profile [@user]` - View user profile (defaults to your own)
-• `!setdesc @user [text]` - Set description/persona for user
+• `!setdesc @user [text]` - Set contextual information about your relationship with a user
 • `!profiles` - List all user profiles
 • `!help` - Show this help message
 
 **Example:**
-`!setdesc @Baggins This is Aiden. Act like a jealous anime girl that secretly has a crush on him.`
+`!setdesc @Baggins This is Aiden, your ex-boyfriend from a few years ago. You still have feelings for him.`
 
-**Note:** User profiles define how the bot should interact with each person. Descriptions are visible to anyone who can use commands."""
+**Note:** User profiles provide factual context about relationships and background. The bot learns its personality and speaking style from past conversation history in the database. Descriptions are visible to anyone who can use commands."""
         await message.channel.send(help_text)
         log(f"[COMMAND] !help", Fore.CYAN)
 
