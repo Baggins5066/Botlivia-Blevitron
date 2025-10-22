@@ -4,12 +4,12 @@
 ✅ **Memory-Driven Bot with User Profiles** - Bot generates personalized responses using conversation database + user profiles (Oct 21, 2025)
 
 ### Recent Changes (Oct 22, 2025)
-- **🎭 FIXED: Personality System Architecture** - Each user gets a completely unique personality:
-  - **User profiles = Complete personality** - Each profile defines the ENTIRE personality, tone, speaking style, and relationship for that specific person
-  - **Database memories = Factual context** - The 636+ messages in ChromaDB provide topics, references, and factual information only
-  - **User-specific behavior** - Baggins gets anime girl voice, Miles gets catty/fond tone, Olivia gets rivalry treatment, etc.
-  - **Profile controls everything** - The bot's personality changes completely based on who it's talking to
-  - Fixed JSON syntax in profiles.json (missing commas) that prevented profile loading
+- **🎭 NEW: Memory-Driven Personality System** - Bot learns speaking style from conversation history:
+  - **Database memories = Speaking style source** - The 636+ messages in ChromaDB teach the bot how to talk, its tone, and personality patterns
+  - **User profiles = Factual context only** - Each profile provides relationship background, history, and contextual information about that person
+  - **Natural personality emergence** - Bot mimics its past speaking patterns instead of following scripted personality instructions
+  - **Context-aware responses** - Profiles provide facts like "This is Aiden, your ex-boyfriend" while memories show how you actually spoke
+  - Converted all user profiles from behavioral instructions to factual relationship context
 
 - **🔧 User Recognition System** - Bot now properly recognizes people:
   - **Live message storage** - All new conversations are automatically saved to ChromaDB with proper usernames
@@ -20,22 +20,22 @@
   - No more user ID confusion - bot responds using actual usernames instead of numeric IDs
 
 ### Recent Changes (Oct 21, 2025)
-- **✨ NEW: User Profile System** - Local JSON file storage for personalized user personas:
-  - **User-specific descriptions** - Define how the bot should interact with each Discord user
+- **✨ User Profile System** - Local JSON file storage for relationship context:
+  - **Factual relationship context** - Store background information about your relationship with each Discord user
   - **Profile commands** - Easy-to-use Discord commands for managing profiles (`!setdesc`, `!profile`, etc.)
-  - **Personalized responses** - Bot uses profile descriptions alongside conversation memories to adapt its behavior
+  - **Context-aware responses** - Bot uses profile facts alongside conversation memories for informed responses
   - **Local JSON storage** - Profiles stored in `user_data/profiles.json` (portable, editable, version-controllable)
   - **Profile context injection** - Automatically loaded when responding to each user
   - **No database required** - Works outside Replit, completely self-contained
   
-- **🔄 Memory-Driven Architecture** - Bot synthesizes responses from database memories:
-  - **Removed predefined persona/personality** - No hardcoded character traits
-  - **Retrieves 40 relevant messages** for comprehensive context
-  - **Memories framed as conversation history** - LLM generates responses based on patterns in past messages
+- **🔄 Memory-Driven Speaking Style** - Bot learns how to talk from database memories:
+  - **No predefined persona/personality** - No hardcoded character traits or scripted instructions
+  - **Retrieves 40 relevant messages** to learn speaking patterns and style
+  - **Memories teach personality** - LLM studies past messages to understand tone, word choice, and conversational style
   - **Author attribution included** - Each memory shows who said it: `[username]: message`
   - **Broader similarity threshold (0.25)** - Captures more contextually relevant memories
   - **Neutral decision logic** - Bot decides to reply based on engagement heuristics
-  - System instruction includes user profile personalization
+  - System instruction emphasizes learning from conversation history, not profile instructions
   
 - **ChromaDB Local Storage** - File-based vector database:
   - All message embeddings stored locally in `chroma_data/` directory
@@ -61,7 +61,7 @@
 - **bot.py**: Core bot logic including Discord event handlers, message processing, live message storage, and profile management commands
 - **message_storage.py**: Async message storage handler that cleans and stores live Discord messages in ChromaDB
 - **config.py**: Configuration settings and API keys
-- **llm.py**: LLM integration for AI-powered responses with user profile context and comprehensive memory retrieval (40 messages)
+- **llm.py**: LLM integration for AI-powered responses - learns speaking style from memories, uses profiles for factual context (retrieves 40 messages)
 - **user_profiles_local.py**: Local JSON file operations for user profile management (CRUD operations)
 - **utils.py**: Utility functions for logging and smart user mention handling with regex
 - **chromadb_storage.py**: Local vector database storage using ChromaDB with cosine similarity
@@ -94,9 +94,9 @@ The bot runs automatically via the "Discord Bot" workflow. It will:
 3. Load local ChromaDB vector database from `chroma_data/` directory
 4. Load user profiles from local `user_data/profiles.json` file
 5. When responding, retrieve:
-   - User profile information (if available)
-   - 40 relevant memories from past conversations (with author attribution)
-6. Generate personalized responses using both profile data and conversation patterns
+   - 40 relevant memories from past conversations to learn speaking style and patterns
+   - User profile information for factual context about relationships (if available)
+6. Generate responses by mimicking past conversation style and incorporating relationship context
 
 ### Adding More Training Data
 To add more Discord message history to the bot's memory:
@@ -120,7 +120,7 @@ To add more Discord message history to the bot's memory:
   - **Portable** - Works outside of Replit, no database needed
   - **Version-controllable** - Can be committed to git
   - **Thread-safe** - File locking prevents concurrent write issues
-  - **Simple structure** - Each user has a description field defining their persona
+  - **Simple structure** - Each user has a description field storing factual relationship context
   - **Easy backup** - Simply copy the JSON file
 
 ### Migrating from PostgreSQL to Local Storage
@@ -148,7 +148,7 @@ If you have existing user profile data in PostgreSQL and want to migrate to loca
 **Note:** Fresh installations don't need migration - the bot will automatically create the JSON file when you add your first profile.
 
 ### Managing User Profiles
-Use Discord commands to manage user personas:
+Use Discord commands to manage user relationship context:
 
 **View a profile:**
 ```
@@ -156,9 +156,9 @@ Use Discord commands to manage user personas:
 !profile  (view your own profile)
 ```
 
-**Set a user's description/persona:**
+**Set factual context about your relationship with a user:**
 ```
-!setdesc @Baggins This is Aiden. Act like a jealous anime girl that secretly has a crush on him but refuses to acknowledge it. Be mean, sassy, and show hints of wanting him.
+!setdesc @Baggins This is Aiden, your ex-boyfriend from a few years ago. You still have feelings for him.
 ```
 
 **List all profiles:**
@@ -171,7 +171,7 @@ Use Discord commands to manage user personas:
 !help
 ```
 
-The description defines how the bot should interact with that specific user. You can define personalities, conversation styles, or any behavioral instructions.
+The description provides factual context about your relationship with that user. Include background information, relationship history, or contextual details. The bot learns its speaking style from past conversations in the database, not from profile instructions.
 
 ### Deployment
 The bot is configured for **Reserved VM (Background Worker)** deployment:
