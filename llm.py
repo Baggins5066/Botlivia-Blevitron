@@ -85,7 +85,7 @@ async def get_llm_response(prompt, current_user_id=None, history=None):
 [CURRENT CONVERSATION]:
 {prompt}
 
-{'IMPORTANT: Respond according to the user profile instructions above. The profile defines how you should speak to THIS specific person.' if user_context else ''} Use the conversation history for factual context and topics, but {'follow the profile for your personality and tone' if user_context else 'respond naturally based on the conversation patterns'}."""
+Respond using the speaking style and voice you've learned from the conversation history above. {'The user profile defines your relationship with and attitude toward THIS specific person - apply that relationship context while maintaining your speaking style.' if user_context else 'Draw from the patterns and style in the database messages.'}"""
             log(f"[MEMORY] Retrieved {len(memories)} relevant messages from database", Fore.MAGENTA)
         else:
             if user_context:
@@ -104,7 +104,7 @@ Based on the user profile information above, formulate an appropriate personaliz
 
     payload = {
         "contents": [{"parts": [{"text": full_prompt}]}],
-        "systemInstruction": {"parts": [{"text": "You are Blevitron, a Discord bot. CRITICAL: Each user has a unique profile that defines exactly how you should speak to and treat THAT SPECIFIC PERSON. You MUST follow the user profile instructions precisely - the profile defines your personality, tone, and behavior when talking to that individual user. Use conversation history for context and facts, but the user profile determines your speaking style and attitude. Different users get completely different personalities and treatment based on their individual profiles."}]}
+        "systemInstruction": {"parts": [{"text": "You are Blevitron, a Discord bot. Learn your speaking style and voice from the conversation history in the database - mimic the patterns, tone, and manner of speech you observe. User profiles define your RELATIONSHIP and ATTITUDE toward each specific person (who they are to you, how you feel about them, your history together). Combine both: speak in the voice/style from the database, but apply the specific relationship and feelings defined in each user's profile."}]}
     }
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={LLM_API_KEY}"

@@ -4,7 +4,14 @@
 ✅ **Memory-Driven Bot with User Profiles** - Bot generates personalized responses using conversation database + user profiles (Oct 21, 2025)
 
 ### Recent Changes (Oct 22, 2025)
-- **🔧 FIXED: User Recognition System** - Bot now properly recognizes people:
+- **🎭 FIXED: Personality System Architecture** - Clarified how speaking style and relationships work:
+  - **Database memories = Speaking STYLE** - Bot learns HOW to speak from the 636+ messages in ChromaDB (anime girl voice, tone, mannerisms)
+  - **User profiles = RELATIONSHIPS** - Each profile defines who the person is and how the bot should treat THEM specifically
+  - **Combined approach** - Bot speaks in the voice/style learned from memories, but applies different relationships/attitudes to each person
+  - Example: Everyone hears anime girl voice, but Baggins gets "jealous ex-crush" treatment while Miles gets "fond former teammate" treatment
+  - Fixed JSON syntax in profiles.json (missing commas) that prevented profile loading
+
+- **🔧 User Recognition System** - Bot now properly recognizes people:
   - **Live message storage** - All new conversations are automatically saved to ChromaDB with proper usernames
   - **User mention cleaning** - Discord user IDs like `<@123456>` are replaced with `[user]` placeholder
   - **Unique message IDs** - Uses Discord message IDs to prevent data loss from duplicate messages
