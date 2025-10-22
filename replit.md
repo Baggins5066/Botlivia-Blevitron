@@ -3,6 +3,15 @@
 ## Project Status
 ✅ **Memory-Driven Bot with User Profiles** - Bot generates personalized responses using conversation database + user profiles (Oct 21, 2025)
 
+### Recent Changes (Oct 22, 2025)
+- **🔧 FIXED: User Recognition System** - Bot now properly recognizes people:
+  - **Live message storage** - All new conversations are automatically saved to ChromaDB with proper usernames
+  - **User mention cleaning** - Discord user IDs like `<@123456>` are replaced with `[user]` placeholder
+  - **Unique message IDs** - Uses Discord message IDs to prevent data loss from duplicate messages
+  - **Clean prompts** - Both short-term history and current messages are sanitized before sending to LLM
+  - **Author attribution** - Every stored message includes the proper display name of who said it
+  - No more user ID confusion - bot responds using actual usernames instead of numeric IDs
+
 ### Recent Changes (Oct 21, 2025)
 - **✨ NEW: User Profile System** - Local JSON file storage for personalized user personas:
   - **User-specific descriptions** - Define how the bot should interact with each Discord user
@@ -42,14 +51,15 @@
 - Configured for VM deployment (always-on background worker)
 
 ### Main Components
-- **bot.py**: Core bot logic including Discord event handlers, message processing, and profile management commands
+- **bot.py**: Core bot logic including Discord event handlers, message processing, live message storage, and profile management commands
+- **message_storage.py**: Async message storage handler that cleans and stores live Discord messages in ChromaDB
 - **config.py**: Configuration settings and API keys
 - **llm.py**: LLM integration for AI-powered responses with user profile context and comprehensive memory retrieval (40 messages)
 - **user_profiles_local.py**: Local JSON file operations for user profile management (CRUD operations)
 - **utils.py**: Utility functions for logging and smart user mention handling with regex
 - **chromadb_storage.py**: Local vector database storage using ChromaDB with cosine similarity
 - **memory_search.py**: Semantic search using vector embeddings, retrieves 40 messages with author attribution
-- **message_parser.py**: Parser for Discord export text files to extract message content and author information
+- **message_parser.py**: Parser for Discord export text files to extract and clean message content and author information
 - **embedding_pipeline.py**: Pipeline to generate embeddings and store them in ChromaDB
 - **migrate_postgres_to_local.py**: One-time migration script from PostgreSQL to local JSON storage
 - **requirements.txt**: Python dependencies (discord.py, colorama, aiohttp, chromadb)
