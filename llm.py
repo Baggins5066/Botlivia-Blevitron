@@ -69,14 +69,14 @@ async def get_llm_response(prompt, current_user_id=None, history=None):
         
         if memories:
             memory_text = "\n".join(memories)
-            # Use memories as the primary context for generating response
+            # Use memories to learn speaking style and personality
             context_parts = []
+            
+            context_parts.append(f"""[CONVERSATION HISTORY FROM DATABASE - Study these past messages to learn your speaking style, tone, and personality]:
+{memory_text}""")
             
             if user_context:
                 context_parts.append(user_context)
-            
-            context_parts.append(f"""[CONVERSATION HISTORY FROM DATABASE - Use these past messages to inform your response]:
-{memory_text}""")
             
             full_context = "\n\n".join(context_parts)
             
@@ -85,7 +85,7 @@ async def get_llm_response(prompt, current_user_id=None, history=None):
 [CURRENT CONVERSATION]:
 {prompt}
 
-{'IMPORTANT: Follow the user profile instructions exactly - it defines your complete personality, tone, and speaking style when talking to this person.' if user_context else ''} Use the conversation history above for factual context and topics only{', not for speaking style' if user_context else ' and to inform your response style'}."""
+IMPORTANT: Learn your personality, tone, and speaking style from the conversation history above - mimic how you spoke in those messages. {'The user profile provides factual context about your relationship with this person - use it for background information only, not speaking style.' if user_context else 'Use the conversation patterns to inform your response style.'}"""
             log(f"[MEMORY] Retrieved {len(memories)} relevant messages from database", Fore.MAGENTA)
         else:
             if user_context:
@@ -94,7 +94,7 @@ async def get_llm_response(prompt, current_user_id=None, history=None):
 [CURRENT CONVERSATION]:
 {prompt}
 
-Based on the user profile information above, formulate an appropriate personalized response."""
+Use the user profile context above for background information about your relationship with this person."""
             else:
                 full_prompt = prompt
             log(f"[MEMORY] No relevant memories found, using current context only", Fore.YELLOW)
@@ -104,7 +104,7 @@ Based on the user profile information above, formulate an appropriate personaliz
 
     payload = {
         "contents": [{"parts": [{"text": full_prompt}]}],
-        "systemInstruction": {"parts": [{"text": "You are Blevitron, a Discord bot. Each user has a unique profile that defines your complete personality and behavior when talking to them - how you speak, your tone, your attitude, and your relationship with that person. Follow the user profile instructions exactly. Use the conversation history from the database for factual context, topics, and reference, but the user profile controls your personality and speaking style for each person."}]}
+        "systemInstruction": {"parts": [{"text": "You are Blevitron, a Discord bot. Learn your personality, tone, and speaking style from the conversation history in the database - study how you talked in past messages and replicate that style. User profiles provide factual context about relationships and background information only, NOT speaking instructions. Your personality emerges naturally from your past conversations."}]}
     }
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={LLM_API_KEY}"
