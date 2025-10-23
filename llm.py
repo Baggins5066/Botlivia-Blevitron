@@ -1,4 +1,5 @@
 import aiohttp
+import asyncio
 import json
 from colorama import Fore
 from config import LLM_API_KEY
@@ -91,25 +92,46 @@ async def get_llm_response(prompt, history=None, user_id=None):
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={LLM_API_KEY}"
 
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers={"Content-Type": "application/json"}, data=json.dumps(payload)) as resp:
-                if resp.status != 200:
-                    error_text = await resp.text()
-                    log(f"[LLM ERROR] API returned status {resp.status}: {error_text}", Fore.RED)
-                    return "uh idk"
-                
-                response_data = await resp.json()
-                log(f"[LLM RESPONSE] Raw response: {json.dumps(response_data)[:200]}", Fore.CYAN)
-                
-                if response_data and response_data.get("candidates"):
-                    return response_data["candidates"][0]["content"]["parts"][0]["text"]
-                else:
-                    log(f"[LLM ERROR] No candidates in response: {response_data}", Fore.RED)
-                    return "uh idk"
-    except Exception as e:
-        log(f"[LLM ERROR] Exception occurred: {type(e).__name__}: {e}", Fore.RED)
-        import traceback
-        log(f"[LLM ERROR] Traceback: {traceback.format_exc()}", Fore.RED)
+    # Retry logic with exponential backoff
+    max_retries = 3
+    base_delay = 1
+    
+    for attempt in range(max_retries):
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, headers={"Content-Type": "application/json"}, data=json.dumps(payload)) as resp:
+                    if resp.status == 503:
+                        if attempt < max_retries - 1:
+                            delay = base_delay * (2 ** attempt)
+                            log(f"[LLM RETRY] API overloaded, retrying in {delay}s (attempt {attempt + 1}/{max_retries})", Fore.YELLOW)
+                            await asyncio.sleep(delay)
+                            continue
+                        else:
+                            log(f"[LLM ERROR] API still overloaded after {max_retries} attempts", Fore.RED)
+                            return "sorry, i'm having trouble connecting to my brain rn. try again in a sec?"
+                    
+                    if resp.status != 200:
+                        error_text = await resp.text()
+                        log(f"[LLM ERROR] API returned status {resp.status}: {error_text}", Fore.RED)
+                        return "uh idk"
+                    
+                    response_data = await resp.json()
+                    log(f"[LLM RESPONSE] Raw response: {json.dumps(response_data)[:200]}", Fore.CYAN)
+                    
+                    if response_data and response_data.get("candidates"):
+                        return response_data["candidates"][0]["content"]["parts"][0]["text"]
+                    else:
+                        log(f"[LLM ERROR] No candidates in response: {response_data}", Fore.RED)
+                        return "uh idk"
+        except Exception as e:
+            log(f"[LLM ERROR] Exception occurred: {type(e).__name__}: {e}", Fore.RED)
+            import traceback
+            log(f"[LLM ERROR] Traceback: {traceback.format_exc()}", Fore.RED)
+            
+            if attempt < max_retries - 1:
+                delay = base_delay * (2 ** attempt)
+                log(f"[LLM RETRY] Retrying in {delay}s (attempt {attempt + 1}/{max_retries})", Fore.YELLOW)
+                await asyncio.sleep(delay)
+                continue
 
     return "uh idk"
