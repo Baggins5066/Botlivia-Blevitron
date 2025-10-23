@@ -11,7 +11,7 @@ async def should_bot_reply(message, history):
     history_text = "\n".join([f"{h['author']}: {h['content']}" for h in history[-10:]])
 
     # Get relevant memories from the database
-    memories = await get_relevant_memories(message.content, history, limit=5)
+    memories = await get_relevant_memories(message.content, history, limit=40)
     memory_text = "\n".join([f"- {mem}" for mem in memories])
 
     decision_prompt = f"""You are deciding whether "Botlivia Blevitron" (a Discord bot) should respond to this message.
@@ -58,7 +58,7 @@ async def get_llm_response(prompt, history=None):
     # Retrieve relevant memories from past conversations
     try:
         current_message = prompt.split("User: ")[-1] if "User: " in prompt else prompt
-        memories = await get_relevant_memories(current_message, history or [], limit=5)
+        memories = await get_relevant_memories(current_message, history or [], limit=40)
         
         if memories:
             memory_text = "\n".join([f"- {mem}" for mem in memories])
@@ -130,6 +130,6 @@ Return ONLY the 5 statuses, one per line, no numbers or formatting."""
                     log(f"[STATUSES] Generated {len(statuses)} new statuses", Fore.YELLOW)
                     return statuses if statuses else []
     except Exception as e:
-        log(f"[STATUS GEN ERROR] {e}", Fore.REDD)
+        log(f"[STATUS GEN ERROR] {e}", Fore.RED)
 
     return []
