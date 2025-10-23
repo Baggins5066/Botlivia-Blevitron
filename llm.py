@@ -1,7 +1,7 @@
 import aiohttp
 import json
 from colorama import Fore
-from config import LLM_API_KEY, BAGGINS_ID, SNAZZYDADDY_ID, PHROGSLEG_ID, CORN_ID, PUGMONKEY_ID, MEATBRO_ID, RESTORT_ID, TBL_ID, EVAN_ID, DROID_ID
+from config import LLM_API_KEY
 from utils import log
 from memory_search import get_relevant_memories
 
@@ -54,7 +54,14 @@ Answer: """
     return False
 
 # -------- LLM Response --------
-async def get_llm_response(prompt, history=None):
+async def get_llm_response(prompt, history=None, user_id=None):
+    # Load user data from JSON file
+    try:
+        with open('users.json', 'r') as f:
+            user_data = json.load(f)
+    except FileNotFoundError:
+        user_data = {}
+
     # Retrieve relevant memories from past conversations
     try:
         current_message = prompt.split("User: ")[-1] if "User: " in prompt else prompt
@@ -66,15 +73,19 @@ async def get_llm_response(prompt, history=None):
             log(f"[MEMORY] Retrieved {len(memories)} relevant memories", Fore.MAGENTA)
     except Exception as e:
         log(f"[MEMORY ERROR] {e}, continuing without memories", Fore.YELLOW)
-    
+
+    # Base system instruction
+    system_instruction = "Talk like the messages you see in the chat history."
+
+    # Add user-specific instructions if user_id is provided
+    if user_id and str(user_id) in user_data:
+        user_info = user_data[str(user_id)]
+        system_instruction += f"\n\nThis is how you should act towards {user_info['username']}:\n{user_info['description']}"
+
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "systemInstruction": {
-            "parts": [{
-                "text": """
-Talk like the messages you see in the chat history.
-"""
-            }]
+            "parts": [{"text": system_instruction}]
         }
     }
 
