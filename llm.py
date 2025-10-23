@@ -83,10 +83,22 @@ Talk like the messages you see in the chat history.
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(url, headers={"Content-Type": "application/json"}, data=json.dumps(payload)) as resp:
+                if resp.status != 200:
+                    error_text = await resp.text()
+                    log(f"[LLM ERROR] API returned status {resp.status}: {error_text}", Fore.RED)
+                    return "uh idk"
+                
                 response_data = await resp.json()
+                log(f"[LLM RESPONSE] Raw response: {json.dumps(response_data)[:200]}", Fore.CYAN)
+                
                 if response_data and response_data.get("candidates"):
                     return response_data["candidates"][0]["content"]["parts"][0]["text"]
+                else:
+                    log(f"[LLM ERROR] No candidates in response: {response_data}", Fore.RED)
+                    return "uh idk"
     except Exception as e:
-        log(f"[LLM ERROR] {e}", Fore.RED)
+        log(f"[LLM ERROR] Exception occurred: {type(e).__name__}: {e}", Fore.RED)
+        import traceback
+        log(f"[LLM ERROR] Traceback: {traceback.format_exc()}", Fore.RED)
 
     return "uh idk"
