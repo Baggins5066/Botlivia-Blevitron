@@ -130,6 +130,6 @@ Return ONLY the 5 statuses, one per line, no numbers or formatting."""
                     log(f"[STATUSES] Generated {len(statuses)} new statuses", Fore.YELLOW)
                     return statuses if statuses else []
     except Exception as e:
-        log(f"[STATUS GEN ERROR] {e}", Fore.RED)
+        log(f"[STATUS GEN ERROR] {e}", Fore.REDD)
 
     return []

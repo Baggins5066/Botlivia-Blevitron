@@ -174,7 +174,8 @@ def get_collection_count():
     try:
         collection = get_or_create_collection()
         return collection.count()
-    except Exception:
+    except Exception as e:
+        print(f"[ERROR] Failed to get collection count: {e}")
         return 0
 
 
