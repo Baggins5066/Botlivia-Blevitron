@@ -10,21 +10,25 @@ async def should_bot_reply(message, history):
     # Build context from recent conversation
     history_text = "\n".join([f"{h['author']}: {h['content']}" for h in history[-10:]])
 
+    # Get relevant memories from the database
+    memories = await get_relevant_memories(message.content, history, limit=5)
+    memory_text = "\n".join([f"- {mem}" for mem in memories])
+
     decision_prompt = f"""You are deciding whether "Botlivia Blevitron" (a Discord bot) should respond to this message.
 
 Recent conversation:
 {history_text}
 
+Here are some relevant past messages from the database for context:
+{memory_text}
 
 Current message from {message.author}: {message.content}
 
-Respond with ONLY "YES" or "NO" based on these rules:
-- YES if the message is directed at the bot, mentions the bot, or is a question/statement the bot should engage with
-- YES if the conversation is about video games, joining vc, drinking and partying, or topics Blevitron would care about
-- YES if someone is asking for advice or seems to need the bot's input
-- NO if it's a casual chat between other users that doesn't need bot input
-- NO if the message is very short/simple like "ok", "lol", "nice" (unless directly replying to the bot) OR is otherwise ending the conversation.
-- NO if the bot just responded recently (within last 2 messages) unless directly addressed
+Respond with ONLY "YES" or "NO".
+- Consider if the message is directed at the bot, mentions the bot, or is a question/statement the bot should engage with.
+- Based on the provided memories, is this a topic the bot would typically respond to?
+- Is this a casual chat between other users that doesn't need bot input?
+- Has the bot responded recently? Avoid spamming.
 
 Current message from {message.author}: {message.content}
 Answer: """
@@ -50,7 +54,7 @@ Answer: """
     return False
 
 # -------- LLM Response --------
-async def get_llm_response(prompt, current_user_id=None, history=None):
+async def get_llm_response(prompt, history=None):
     # Retrieve relevant memories from past conversations
     try:
         current_message = prompt.split("User: ")[-1] if "User: " in prompt else prompt
@@ -63,10 +67,6 @@ async def get_llm_response(prompt, current_user_id=None, history=None):
     except Exception as e:
         log(f"[MEMORY ERROR] {e}, continuing without memories", Fore.YELLOW)
     
-    # Add user ID context to prompt so AI can apply personalized responses
-    if current_user_id:
-        prompt = f"[User Discord ID: {current_user_id}]\n\n{prompt}"
-
     payload = {
         "contents": [{"parts": [{"text": prompt}]}]
     }
