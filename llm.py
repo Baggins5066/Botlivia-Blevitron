@@ -33,11 +33,8 @@ Here are some relevant past messages from the database for context:
 
 Current message from {message.author}: {message.content}
 
-Respond with ONLY "YES" or "NO".
-- Consider if the message is directed at the bot, mentions the bot, or is a question/statement the bot should engage with.
-- Based on the provided memories, is this a topic the bot would typically respond to?
-- Is this a casual chat between other users that doesn't need bot input?
-- Has the bot responded recently? Avoid spamming.
+Should the bot respond to this message?
+Return only YES or NO.
 
 Current message from {message.author}: {message.content}
 Answer: """
