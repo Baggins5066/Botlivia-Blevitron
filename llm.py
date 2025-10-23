@@ -5,14 +5,22 @@ from colorama import Fore
 from config import LLM_API_KEY
 from utils import log
 from memory_search import get_relevant_memories
+from user_management import replace_aliases_with_usernames
 
 # -------- AI Decision: Should Bot Reply? --------
 async def should_bot_reply(message, history):
+    # Process aliases in the message content and history
+    processed_content = replace_aliases_with_usernames(message.content)
+    processed_history = [
+        {"author": h['author'], "content": replace_aliases_with_usernames(h['content'])}
+        for h in history
+    ]
+
     # Build context from recent conversation
-    history_text = "\n".join([f"{h['author']}: {h['content']}" for h in history[-10:]])
+    history_text = "\n".join([f"{h['author']}: {h['content']}" for h in processed_history[-10:]])
 
     # Get relevant memories from the database
-    memories = await get_relevant_memories(message.content, history, limit=40)
+    memories = await get_relevant_memories(processed_content, processed_history, limit=40)
     memory_text = "\n".join([f"- {mem}" for mem in memories])
 
     decision_prompt = f"""You are deciding whether "Botlivia Blevitron" (a Discord bot) should respond to this message.
@@ -56,6 +64,13 @@ Answer: """
 
 # -------- LLM Response --------
 async def get_llm_response(prompt, history=None, user_id=None):
+    # Process aliases in the prompt and history
+    processed_prompt = replace_aliases_with_usernames(prompt)
+    processed_history = [
+        {"author": h['author'], "content": replace_aliases_with_usernames(h['content'])}
+        for h in (history or [])
+    ]
+
     # Load user data from JSON file
     try:
         with open('users.json', 'r') as f:
@@ -65,12 +80,12 @@ async def get_llm_response(prompt, history=None, user_id=None):
 
     # Retrieve relevant memories from past conversations
     try:
-        current_message = prompt.split("User: ")[-1] if "User: " in prompt else prompt
-        memories = await get_relevant_memories(current_message, history or [], limit=40)
+        current_message = processed_prompt.split("User: ")[-1] if "User: " in processed_prompt else processed_prompt
+        memories = await get_relevant_memories(current_message, processed_history, limit=40)
         
         if memories:
             memory_text = "\n".join([f"- {mem}" for mem in memories])
-            prompt = f"[Relevant past messages for context]:\n{memory_text}\n\n{prompt}"
+            processed_prompt = f"[Relevant past messages for context]:\n{memory_text}\n\n{processed_prompt}"
             log(f"[MEMORY] Retrieved {len(memories)} relevant memories", Fore.MAGENTA)
     except Exception as e:
         log(f"[MEMORY ERROR] {e}, continuing without memories", Fore.YELLOW)
@@ -84,7 +99,7 @@ async def get_llm_response(prompt, history=None, user_id=None):
         system_instruction += f"\n\nThis is how you should act towards {user_info['username']}:\n{user_info['description']}"
 
     payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
+        "contents": [{"parts": [{"text": processed_prompt}]}],
         "systemInstruction": {
             "parts": [{"text": system_instruction}]
         }
