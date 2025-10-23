@@ -87,7 +87,7 @@ async def search_similar_messages_async(query_text, limit=8):
         return []
 
 
-async def get_relevant_memories(current_message, conversation_history, limit=5):
+async def get_relevant_memories(current_message, conversation_history, limit=40):
     """
     Get relevant memories based on current message and recent conversation.
 
@@ -120,7 +120,7 @@ if __name__ == '__main__':
         test_query = "what do you want to do tonight? want to play valorant?"
         print(f"Searching for messages similar to: '{test_query}'\n")
 
-        results = await search_similar_messages_async(test_query, limit=5)
+        results = await search_similar_messages_async(test_query, limit=40)
 
         print(f"Found {len(results)} similar messages:\n")
         for i, (content, similarity) in enumerate(results, 1):
