@@ -58,7 +58,7 @@ async def generate_query_embedding(query_text):
         raise
 
 
-async def search_similar_messages(query_text, limit=8):
+async def search_similar_messages_async(query_text, limit=8):
     """
     Search for messages similar to the query text using vector similarity.
     Uses ChromaDB for local vector search without blocking the event loop.
@@ -78,7 +78,7 @@ async def search_similar_messages(query_text, limit=8):
         # Run in executor to avoid blocking event loop (ChromaDB is synchronous)
         import asyncio
         loop = asyncio.get_event_loop()
-        results = await loop.run_in_executor(None, chromadb_search, query_embedding, limit)
+        results = await loop.run_in_executor(None, search_similar_messages, query_embedding, limit)
 
         return results
 
@@ -104,7 +104,7 @@ async def get_relevant_memories(current_message, conversation_history, limit=5):
     search_query = f"{context} {current_message}"
 
     # Search for similar messages
-    results = await search_similar_messages(search_query, limit)
+    results = await search_similar_messages_async(search_query, limit)
 
     # Extract just the message content
     memories = [content for content, similarity in results if similarity > 0.3]
@@ -120,7 +120,7 @@ if __name__ == '__main__':
         test_query = "what do you want to do tonight? want to play valorant?"
         print(f"Searching for messages similar to: '{test_query}'\n")
 
-        results = await search_similar_messages(test_query, limit=5)
+        results = await search_similar_messages_async(test_query, limit=5)
 
         print(f"Found {len(results)} similar messages:\n")
         for i, (content, similarity) in enumerate(results, 1):
