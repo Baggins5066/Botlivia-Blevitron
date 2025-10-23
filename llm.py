@@ -1,7 +1,7 @@
 import aiohttp
 import json
 from colorama import Fore
-from config import LLM_API_KEY, PERSONA_TEXT, BAGGINS_ID, SNAZZYDADDY_ID, PHROGSLEG_ID, CORN_ID, PUGMONKEY_ID, MEATBRO_ID, RESTORT_ID, TBL_ID, EVAN_ID, DROID_ID
+from config import LLM_API_KEY, BAGGINS_ID, SNAZZYDADDY_ID, PHROGSLEG_ID, CORN_ID, PUGMONKEY_ID, MEATBRO_ID, RESTORT_ID, TBL_ID, EVAN_ID, DROID_ID
 from utils import log
 from memory_search import get_relevant_memories
 
@@ -51,8 +51,6 @@ Answer: """
 
 # -------- LLM Response --------
 async def get_llm_response(prompt, current_user_id=None, history=None):
-    persona = PERSONA_TEXT
-    
     # Retrieve relevant memories from past conversations
     try:
         current_message = prompt.split("User: ")[-1] if "User: " in prompt else prompt
@@ -70,8 +68,7 @@ async def get_llm_response(prompt, current_user_id=None, history=None):
         prompt = f"[User Discord ID: {current_user_id}]\n\n{prompt}"
 
     payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "systemInstruction": {"parts": [{"text": persona}]}
+        "contents": [{"parts": [{"text": prompt}]}]
     }
 
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={LLM_API_KEY}"
