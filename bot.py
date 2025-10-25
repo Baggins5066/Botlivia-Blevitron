@@ -1,4 +1,5 @@
 import discord
+from discord.ext import commands
 from collections import deque
 from colorama import Fore
 
@@ -11,21 +12,31 @@ intents = discord.Intents.default()
 intents.message_content = True
 intents.guilds = True
 intents.members = True
-client = discord.Client(intents=intents)
+bot = commands.Bot(command_prefix="!", intents=intents)
 
 conversation_history = {}   # short memory per channel
 processed_messages = deque(maxlen=1000)  # track processed message IDs to prevent duplicates
 
 # -------- Discord Events --------
-@client.event
+@bot.event
 async def on_ready():
-    if client.user:
-        log(f"[READY] Logged in as {client.user} (ID: {client.user.id})", Fore.GREEN)
+    if bot.user:
+        log(f"[READY] Logged in as {bot.user} (ID: {bot.user.id})", Fore.GREEN)
+        try:
+            await bot.load_extension("commands")
+            synced = await bot.tree.sync()
+            log(f"Synced {len(synced)} command(s)", Fore.GREEN)
+        except Exception as e:
+            log(f"Failed to sync commands: {e}", Fore.RED)
 
-@client.event
+@bot.event
 async def on_message(message):
+    sleep_cog = bot.get_cog("SleepCog")
+    if sleep_cog and sleep_cog.is_sleeping:
+        return
+
     try:
-        if message.author == client.user:
+        if message.author == bot.user:
             return
 
         # Prevent processing the same message twice
@@ -51,8 +62,8 @@ async def on_message(message):
         conversation_history[message.channel.id] = history
 
         # Check if message is a direct reply to bot or mentions bot
-        is_direct_reply = message.reference and message.reference.resolved and message.reference.resolved.author == client.user
-        is_bot_mentioned = client.user in message.mentions or "botlivia blevitron" in message.content.lower()
+        is_direct_reply = message.reference and message.reference.resolved and message.reference.resolved.author == bot.user
+        is_bot_mentioned = bot.user in message.mentions or "botlivia blevitron" in message.content.lower()
 
         # Auto-reply if directly mentioned or replied to
         if is_direct_reply or is_bot_mentioned:
@@ -74,11 +85,11 @@ async def on_message(message):
                     )
                     response = await get_llm_response(prompt, history=history, user_id=message.author.id)
                     response = replace_with_mentions(response)
-                    log(f"[OUTGOING][#{message.channel}] {client.user}: {response}", Fore.GREEN)
+                    log(f"[OUTGOING][#{message.channel}] {bot.user}: {response}", Fore.GREEN)
                     await message.channel.send(response)
 
                     # Add bot's response to history
-                    history.append({"author": str(client.user), "content": response})
+                    history.append({"author": str(bot.user), "content": response})
                     conversation_history[message.channel.id] = history
                 except Exception as e:
                     log(f"[ERROR] Failed to generate or send response: {e}", Fore.RED)
@@ -94,4 +105,4 @@ if __name__ == "__main__":
         log("[ERROR] LLM_API_KEY environment variable is not set!", Fore.RED)
         exit(1)
 
-    client.run(config.DISCORD_BOT_TOKEN)
+    bot.run(config.DISCORD_BOT_TOKEN)

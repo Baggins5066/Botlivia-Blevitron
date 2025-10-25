@@ -1,0 +1,55 @@
+import discord
+from discord.ext import commands
+import asyncio
+
+class SleepCog(commands.Cog):
+    def __init__(self, bot):
+        self.bot = bot
+        self.is_sleeping = False
+        self.wake_up_task = None
+
+    @discord.app_commands.command(name="sleep", description="Makes the bot ignore messages for a specified amount of time.")
+    async def sleep(self, interaction: discord.Interaction, duration: int = None):
+        """
+        Makes the bot ignore messages for a specified amount of time.
+        If no duration is provided, the bot will sleep indefinitely.
+        """
+        if self.is_sleeping:
+            await interaction.response.send_message("I'm already sleeping.", ephemeral=True)
+            return
+
+        self.is_sleeping = True
+        await self.bot.change_presence(status=discord.Status.dnd, activity=discord.Game("Sleeping..."))
+
+        if duration:
+            await interaction.response.send_message(f"Going to sleep for {duration} seconds.", ephemeral=True)
+
+            async def wake_up():
+                await asyncio.sleep(duration)
+                self.is_sleeping = False
+                await self.bot.change_presence(status=discord.Status.online)
+
+            if self.wake_up_task:
+                self.wake_up_task.cancel()
+
+            self.wake_up_task = asyncio.create_task(wake_up())
+        else:
+            await interaction.response.send_message("Going to sleep indefinitely. Use `/wake` to wake me up.", ephemeral=True)
+
+    @discord.app_commands.command(name="wake", description="Wakes the bot up.")
+    async def wake(self, interaction: discord.Interaction):
+        """Wakes the bot up."""
+        if not self.is_sleeping:
+            await interaction.response.send_message("I'm already awake.", ephemeral=True)
+            return
+
+        self.is_sleeping = False
+        await self.bot.change_presence(status=discord.Status.online)
+        await interaction.response.send_message("I'm awake now!", ephemeral=True)
+
+        if self.wake_up_task:
+            self.wake_up_task.cancel()
+            self.wake_up_task = None
+
+async def setup(bot: commands.Bot):
+    await bot.add_cog(SleepCog(bot))
