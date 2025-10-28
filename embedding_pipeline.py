@@ -30,15 +30,20 @@ async def generate_embedding(text):
         }
     }
     
-    async with aiohttp.ClientSession() as session:
-        async with session.post(url, headers={"Content-Type": "application/json"}, data=json.dumps(payload)) as resp:
-            if resp.status != 200:
-                error_text = await resp.text()
-                raise Exception(f"Embedding API error: {error_text}")
-            
-            response_data = await resp.json()
-            embedding = response_data['embedding']['values']
-            return embedding
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, headers={"Content-Type": "application/json"}, data=json.dumps(payload)) as resp:
+                if resp.status != 200:
+                    error_text = await resp.text()
+                    print(f"[ERROR] Embedding API error: {error_text}")
+                    raise Exception(f"Embedding API error: {error_text}")
+                
+                response_data = await resp.json()
+                embedding = response_data['embedding']['values']
+                return embedding
+    except Exception as e:
+        print(f"[ERROR] Failed to generate embedding: {e}")
+        raise
 
 
 async def generate_embeddings_batch(messages, batch_size=20):

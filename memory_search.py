@@ -1,7 +1,9 @@
 import os
 import json
 import aiohttp
-from chromadb_storage import search_similar_messages as chromadb_search
+from chromadb_storage import search_similar_messages
+from utils import log
+from colorama import Fore
 
 LLM_API_KEY = os.getenv('LLM_API_KEY')
 
@@ -19,15 +21,15 @@ async def generate_query_embedding(query_text):
     """
     Generate embedding for a query text using Google's embedding model.
     Uses persistent HTTP session for efficiency.
-    
+
     Args:
         query_text: The text to embed
-        
+
     Returns:
         List of floats representing the embedding vector
     """
     url = f"https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key={LLM_API_KEY}"
-    
+
     payload = {
         "model": "models/text-embedding-004",
         "content": {
@@ -36,110 +38,92 @@ async def generate_query_embedding(query_text):
             }]
         }
     }
-    
+
     session = await get_http_session()
-    async with session.post(url, headers={"Content-Type": "application/json"}, data=json.dumps(payload)) as resp:
-        if resp.status != 200:
-            error_text = await resp.text()
-            raise Exception(f"Embedding API error: {error_text}")
-        
-        response_data = await resp.json()
-        embedding = response_data['embedding']['values']
-        return embedding
+    try:
+        async with session.post(url, headers={"Content-Type": "application/json"}, data=json.dumps(payload)) as resp:
+            if resp.status != 200:
+                error_text = await resp.text()
+                log(f"[ERROR] Embedding API error: {resp.status} - {error_text}", Fore.RED)
+                raise Exception(f"Embedding API error: {error_text}")
+
+            response_data = await resp.json()
+            embedding = response_data['embedding']['values']
+            return embedding
+    except aiohttp.ClientError as e:
+        log(f"[ERROR] Network error during embedding generation: {e}", Fore.RED)
+        raise
+    except Exception as e:
+        log(f"[ERROR] Unexpected error during embedding generation: {e}", Fore.RED)
+        raise
 
 
-async def search_similar_messages(query_text, limit=8):
+async def search_similar_messages_async(query_text, limit=8):
     """
     Search for messages similar to the query text using vector similarity.
     Uses ChromaDB for local vector search without blocking the event loop.
-    
+
     Args:
         query_text: The text to search for
         limit: Maximum number of results to return (default 8)
-        
+
     Returns:
         List of tuples (message_content, similarity_score, author)
     """
     try:
         # Generate embedding for the query
         query_embedding = await generate_query_embedding(query_text)
-        
+
         # Use ChromaDB to search for similar messages
         # Run in executor to avoid blocking event loop (ChromaDB is synchronous)
         import asyncio
         loop = asyncio.get_event_loop()
-        results = await loop.run_in_executor(None, chromadb_search, query_embedding, limit)
-        
+        results = await loop.run_in_executor(None, search_similar_messages, query_embedding, limit)
+
         return results
-    
+
     except Exception as e:
-        print(f"Error in search_similar_messages: {e}")
+        log(f"[ERROR] Error in search_similar_messages: {e}", Fore.RED)
         return []
 
 
-async def get_relevant_memories(current_message, conversation_history, limit=5):
+async def get_relevant_memories(current_message, conversation_history, limit=40):
     """
     Get relevant memories based on current message and recent conversation.
-    Prioritizes messages from Olivia (phrogsleg/liv!) for style learning.
-    
+
     Args:
         current_message: The current message text
         conversation_history: List of recent messages for context
         limit: Number of memories to retrieve
-        
+
     Returns:
         List of relevant message strings
     """
     # Combine current message with recent context for better search
     context = " ".join([msg.get('content', '') for msg in conversation_history[-3:]])
     search_query = f"{context} {current_message}"
-    
-    # Search for more messages than needed to filter for Olivia's
-    # Retrieve 3x the limit to ensure we have enough after filtering
-    results = await search_similar_messages(search_query, limit=limit * 3)
-    
-    # Separate Olivia's messages from others
-    olivia_messages = []
-    other_messages = []
-    
-    for content, similarity, author in results:
-        if similarity > 0.3:  # Only include messages with decent similarity
-            # Check if author is Olivia (various display names she uses)
-            is_olivia = author and any(name in author.lower() for name in ['phrogsleg', 'liv!', 'liv', 'olivia'])
-            
-            if is_olivia:
-                olivia_messages.append(content)
-            else:
-                other_messages.append(content)
-    
-    # Prioritize Olivia's messages: use mostly her messages, fill rest with others if needed
-    # Aim for at least 70% of results to be from Olivia
-    olivia_count = min(len(olivia_messages), max(int(limit * 0.7), limit - 2))
-    other_count = limit - olivia_count
-    
-    memories = olivia_messages[:olivia_count] + other_messages[:other_count]
-    
-    # If we don't have enough, add more from whichever pool has them
-    if len(memories) < limit:
-        remaining = limit - len(memories)
-        memories.extend(olivia_messages[olivia_count:olivia_count + remaining])
-    
-    return memories[:limit]
+
+    # Search for similar messages
+    results = await search_similar_messages_async(search_query, limit)
+
+    # Extract just the message content
+    memories = [content for content, similarity in results if similarity > 0.3]
+
+    return memories
 
 
 if __name__ == '__main__':
     # Test the search function
     import asyncio
-    
+
     async def test():
         test_query = "what do you want to do tonight? want to play valorant?"
         print(f"Searching for messages similar to: '{test_query}'\n")
-        
-        results = await search_similar_messages(test_query, limit=5)
-        
+
+        results = await search_similar_messages_async(test_query, limit=40)
+
         print(f"Found {len(results)} similar messages:\n")
-        for i, (content, similarity, author) in enumerate(results, 1):
-            author_str = f"[{author}]" if author else "[Unknown]"
-            print(f"{i}. {author_str} [Similarity: {similarity:.3f}] {content}")
-    
+        for i, (content, similarity) in enumerate(results, 1):
+            print(f"{i}. [Similarity: {similarity:.3f}] {content}")
+
     asyncio.run(test())
