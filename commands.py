@@ -8,14 +8,14 @@ class SleepCog(commands.Cog):
         self.is_sleeping = False
         self.wake_up_task = None
 
-    @discord.app_commands.command(name="sleep", description="Makes the bot ignore messages for a specified amount of time in minutes.")
+    @discord.app_commands.command(name="sleep", description="Make Blevitron ignore messages for a specified amount of time.")
     async def sleep(self, interaction: discord.Interaction, duration: int = None):
         """
-        Makes the bot ignore messages for a specified amount of time.
+        Make Blevitron ignore messages for a specified amount of time.
         Duration is specified in minutes. If no duration is provided, the bot will sleep indefinitely.
         """
         if self.is_sleeping:
-            await interaction.response.send_message("I'm already sleeping.")
+            await interaction.response.send_message("I'm already eeping.")
             return
 
         self.is_sleeping = True
@@ -23,7 +23,7 @@ class SleepCog(commands.Cog):
 
         if duration:
             duration_seconds = duration * 60  # Convert minutes to seconds
-            await interaction.response.send_message(f"Going to sleep for {duration} minutes.")
+            await interaction.response.send_message(f"Eeping for {duration} minutes.")
 
             async def wake_up():
                 await asyncio.sleep(duration_seconds)
@@ -35,18 +35,18 @@ class SleepCog(commands.Cog):
 
             self.wake_up_task = asyncio.create_task(wake_up())
         else:
-            await interaction.response.send_message("Going to sleep indefinitely. Use `/wake` to wake me up.")
+            await interaction.response.send_message("Going to eep")
 
-    @discord.app_commands.command(name="wake", description="Wakes the bot up.")
+    @discord.app_commands.command(name="wake", description="Make Blevitron stop ignoring messages.")
     async def wake(self, interaction: discord.Interaction):
-        """Wakes the bot up."""
+        """Make Blevitron stop ignoring messages."""
         if not self.is_sleeping:
-            await interaction.response.send_message("I'm already awake.")
+            await interaction.response.send_message("I'm awake.")
             return
 
         self.is_sleeping = False
         await self.bot.change_presence(status=discord.Status.online)
-        await interaction.response.send_message("I'm awake now!")
+        await interaction.response.send_message("I'm awake now")
 
         if self.wake_up_task:
             self.wake_up_task.cancel()
