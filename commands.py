@@ -9,7 +9,7 @@ class SleepCog(commands.Cog):
         self.wake_up_task = None
 
     @discord.app_commands.command(name="sleep", description="Make Blevitron ignore messages for a specified amount of time.")
-    async def sleep(self, interaction: discord.Interaction, minutes: int = None):
+    async def sleep(self, interaction: discord.Interaction, minutes: int):
         """
         Make Blevitron ignore messages for a specified amount of time.
         Duration is specified in minutes. If no duration is provided, the bot will sleep indefinitely.
