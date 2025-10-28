@@ -9,7 +9,7 @@ class SleepCog(commands.Cog):
         self.wake_up_task = None
 
     @discord.app_commands.command(name="sleep", description="Make Blevitron ignore messages for a specified amount of time.")
-    async def sleep(self, interaction: discord.Interaction, duration: int = None):
+    async def sleep(self, interaction: discord.Interaction, minutes: int = None):
         """
         Make Blevitron ignore messages for a specified amount of time.
         Duration is specified in minutes. If no duration is provided, the bot will sleep indefinitely.
@@ -21,12 +21,11 @@ class SleepCog(commands.Cog):
         self.is_sleeping = True
         await self.bot.change_presence(status=discord.Status.idle, activity=discord.CustomActivity(name="eeping."))
 
-        if duration:
-            duration_seconds = duration * 60  # Convert minutes to seconds
-            await interaction.response.send_message(f"Eeping for {duration} minutes.")
+        if minutes:
+            await interaction.response.send_message(f"Eeping for {minutes} minutes.")
 
             async def wake_up():
-                await asyncio.sleep(duration_seconds)
+                await asyncio.sleep(minutes * 60)
                 self.is_sleeping = False
                 await self.bot.change_presence(status=discord.Status.online)
 
