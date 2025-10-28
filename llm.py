@@ -88,7 +88,7 @@ async def get_llm_response(prompt, history=None, user_id=None):
         log(f"[MEMORY ERROR] {e}, continuing without memories", Fore.YELLOW)
 
     # Base system instruction
-    system_instruction = "Talk like the messages you see in the chat history."
+    system_instruction = "You are Blevitron. Talk like the messages you see in the chat history."
 
     # Add user-specific instructions if user_id is provided
     if user_id and str(user_id) in user_data:
