@@ -8,11 +8,11 @@ class SleepCog(commands.Cog):
         self.is_sleeping = False
         self.wake_up_task = None
 
-    @discord.app_commands.command(name="sleep", description="Makes the bot ignore messages for a specified amount of time.")
+    @discord.app_commands.command(name="sleep", description="Makes the bot ignore messages for a specified amount of time in minutes.")
     async def sleep(self, interaction: discord.Interaction, duration: int = None):
         """
         Makes the bot ignore messages for a specified amount of time.
-        If no duration is provided, the bot will sleep indefinitely.
+        Duration is specified in minutes. If no duration is provided, the bot will sleep indefinitely.
         """
         if self.is_sleeping:
             await interaction.response.send_message("I'm already sleeping.", ephemeral=True)
@@ -22,10 +22,11 @@ class SleepCog(commands.Cog):
         await self.bot.change_presence(status=discord.Status.dnd, activity=discord.Game("Sleeping..."))
 
         if duration:
-            await interaction.response.send_message(f"Going to sleep for {duration} seconds.", ephemeral=True)
+            duration_seconds = duration * 60  # Convert minutes to seconds
+            await interaction.response.send_message(f"Going to sleep for {duration} minutes.", ephemeral=True)
 
             async def wake_up():
-                await asyncio.sleep(duration)
+                await asyncio.sleep(duration_seconds)
                 self.is_sleeping = False
                 await self.bot.change_presence(status=discord.Status.online)
 
@@ -36,20 +37,20 @@ class SleepCog(commands.Cog):
         else:
             await interaction.response.send_message("Going to sleep indefinitely. Use `/wake` to wake me up.", ephemeral=True)
 
-    @discord.app_commands.command(name="wake", description="Wakes the bot up.")
-    async def wake(self, interaction: discord.Interaction):
-        """Wakes the bot up."""
-        if not self.is_sleeping:
-            await interaction.response.send_message("I'm already awake.", ephemeral=True)
-            return
+@discord.app_commands.command(name="wake", description="Wakes the bot up.")
+async def wake(self, interaction: discord.Interaction):
+    """Wakes the bot up."""
+    if not self.is_sleeping:
+        await interaction.response.send_message("I'm already awake.", ephemeral=True)
+        return
 
-        self.is_sleeping = False
-        await self.bot.change_presence(status=discord.Status.online)
-        await interaction.response.send_message("I'm awake now!", ephemeral=True)
+    self.is_sleeping = False
+    await self.bot.change_presence(status=discord.Status.online)
+    await interaction.response.send_message("I'm awake now!", ephemeral=True)
 
-        if self.wake_up_task:
-            self.wake_up_task.cancel()
-            self.wake_up_task = None
+    if self.wake_up_task:
+        self.wake_up_task.cancel()
+        self.wake_up_task = None
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(SleepCog(bot))
