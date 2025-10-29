@@ -2,6 +2,7 @@ import datetime
 import re
 from colorama import Fore, Style, init
 from config import BAGGINS_ID, SNAZZYDADDY_ID, PHROGSLEG_ID, CORN_ID, PUGMONKEY_ID, MEATBRO_ID, RESTORT_ID, TBL_ID, EVAN_ID, DROID_ID
+from log_config import logger
 
 # Initialize Colorama
 init(autoreset=True)
@@ -10,6 +11,7 @@ init(autoreset=True)
 def log(message, color=Fore.WHITE):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     print(f"{Fore.LIGHTBLACK_EX}[{timestamp}]{Style.RESET_ALL} {color}{message}{Style.RESET_ALL}")
+    logger.info(message)
 
 # -------- Replace with Mentions --------
 def replace_with_mentions(text):
