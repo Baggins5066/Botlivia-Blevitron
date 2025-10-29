@@ -63,7 +63,7 @@ async def on_message(message):
 
         # Check if message is a direct reply to bot or mentions bot
         is_direct_reply = message.reference and message.reference.resolved and message.reference.resolved.author == bot.user
-        is_bot_mentioned = bot.user in message.mentions or "botlivia blevitron" in message.content.lower()
+        is_bot_mentioned = bot.user in message.mentions or "blevitron" in message.content.lower()
 
         # Auto-reply if directly mentioned or replied to
         if is_direct_reply or is_bot_mentioned:
