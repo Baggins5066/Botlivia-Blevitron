@@ -2,10 +2,29 @@ import discord
 from discord.ext import commands
 from collections import deque
 from colorama import Fore
+from flask import Flask, send_file
+from threading import Thread
 
 import config
 from utils import log, replace_with_mentions
 from llm import should_bot_reply, get_llm_response
+
+# -------- Flask Web Server for Log Access --------
+app = Flask(__name__)
+
+@app.route('/')
+def index():
+    return '<h1>Bot is running!</h1><a href="/logs">View Logs</a>'
+
+@app.route('/logs')
+def view_logs():
+    try:
+        return send_file('bot.log', mimetype='text/plain')
+    except FileNotFoundError:
+        return 'Log file not found', 404
+
+def run_flask():
+    app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
 
 # -------- Discord Bot Setup --------
 intents = discord.Intents.default()
@@ -104,5 +123,10 @@ if __name__ == "__main__":
     if not config.LLM_API_KEY:
         log("[ERROR] LLM_API_KEY environment variable is not set!", Fore.RED)
         exit(1)
+
+    # Start Flask server in background thread
+    flask_thread = Thread(target=run_flask, daemon=True)
+    flask_thread.start()
+    log("[FLASK] Web server started on port 5000", Fore.GREEN)
 
     bot.run(config.DISCORD_BOT_TOKEN)
