@@ -22,6 +22,12 @@ processed_messages = deque(maxlen=1000)  # track processed message IDs to preven
 async def on_ready():
     if bot.user:
         log(f"[READY] Logged in as {bot.user} (ID: {bot.user.id})", Fore.GREEN)
+
+        # Log server names
+        log("Connected to the following servers:", Fore.YELLOW)
+        for guild in bot.guilds:
+            log(f"- {guild.name} (ID: {guild.id})", Fore.YELLOW)
+
         try:
             await bot.load_extension("commands")
             synced = await bot.tree.sync()
