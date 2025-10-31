@@ -1,9 +1,9 @@
 import re
 from pathlib import Path
 
-def parse_discord_export(file_path):
+def parse_legacy_discord_export(file_path):
     """
-    Parse Discord export text file and extract message content with author information.
+    Parse legacy Discord export text file and extract message content with author information.
     Skips timestamps, call logs, and header information.
     
     Args:
@@ -65,6 +65,56 @@ def parse_discord_export(file_path):
     
     return messages
 
+def parse_raw_text_file(file_path):
+    """
+    Parse a raw text file where each line is a message.
+    Assigns a default author name.
+
+    Args:
+        file_path: Path to the raw .txt file
+
+    Returns:
+        List of tuples (author, message_content)
+    """
+    messages = []
+    with open(file_path, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+
+    for line in lines:
+        content = line.strip()
+        if content:
+            messages.append(("Unknown", content))
+
+    return messages
+
+def parse_discord_export(file_path):
+    """
+    Detects the format of the export file and parses it accordingly.
+
+    Args:
+        file_path: Path to the Discord export .txt file
+
+    Returns:
+        List of tuples (author, message_content)
+    """
+    with open(file_path, 'r', encoding='utf-8') as f:
+        first_line = f.readline().strip()
+
+    # Simple heuristic: legacy format starts with "Guild:" or "="
+    if first_line.startswith('Guild:') or first_line.startswith('='):
+        return parse_legacy_discord_export(file_path)
+    else:
+        # Check for timestamp pattern in the first few lines as a fallback
+        with open(file_path, 'r', encoding='utf-8') as f:
+            lines = [f.readline().strip() for _ in range(5)]
+
+        message_pattern = r'^\[\d+/\d+/\d+\s+\d+:\d+\s+[AP]M\]'
+        is_legacy = any(re.match(message_pattern, line) for line in lines)
+
+        if is_legacy:
+            return parse_legacy_discord_export(file_path)
+        else:
+            return parse_raw_text_file(file_path)
 
 def parse_all_files_in_folder(folder_path):
     """
@@ -90,7 +140,7 @@ def parse_all_files_in_folder(folder_path):
 
 if __name__ == '__main__':
     # Test the parser with the provided file
-    test_file = 'attached_assets/Direct Messages - liv! [1072729769428398080]_1761063206293.txt'
+    test_file = 'attached_assets/Direct Messages - liv! [1072729769428398080]_1761063206293_messages_only.txt'
     messages = parse_discord_export(test_file)
     
     print(f"\nTotal messages extracted: {len(messages)}")
