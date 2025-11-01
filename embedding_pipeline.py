@@ -19,7 +19,11 @@ async def generate_embedding(text):
     Returns:
         List of floats representing the embedding vector
     """
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key={LLM_API_KEY}"
+    url = "https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent"
+    headers = {
+        "Content-Type": "application/json",
+        "x-goog-api-key": LLM_API_KEY
+    }
     
     payload = {
         "model": "models/text-embedding-004",
@@ -32,7 +36,7 @@ async def generate_embedding(text):
     
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers={"Content-Type": "application/json"}, data=json.dumps(payload)) as resp:
+            async with session.post(url, headers=headers, data=json.dumps(payload)) as resp:
                 if resp.status != 200:
                     error_text = await resp.text()
                     print(f"[ERROR] Embedding API error: {error_text}")

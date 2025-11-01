@@ -44,11 +44,15 @@ Answer: """
         "systemInstruction": {"parts": [{"text": "You are a decision-making assistant. Respond with only YES or NO."}]}
     }
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={LLM_API_KEY}"
+    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent"
+    headers = {
+        "Content-Type": "application/json",
+        "x-goog-api-key": LLM_API_KEY
+    }
 
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers={"Content-Type": "application/json"}, data=json.dumps(payload)) as resp:
+            async with session.post(url, headers=headers, data=json.dumps(payload)) as resp:
                 response_data = await resp.json()
                 if response_data and response_data.get("candidates"):
                     decision = response_data["candidates"][0]["content"]["parts"][0]["text"].strip().upper()
@@ -102,7 +106,11 @@ async def get_llm_response(prompt, history=None, user_id=None):
         }
     }
 
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key={LLM_API_KEY}"
+    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent"
+    headers = {
+        "Content-Type": "application/json",
+        "x-goog-api-key": LLM_API_KEY
+    }
 
     # Retry logic with exponential backoff
     max_retries = 3
@@ -111,7 +119,7 @@ async def get_llm_response(prompt, history=None, user_id=None):
     for attempt in range(max_retries):
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.post(url, headers={"Content-Type": "application/json"}, data=json.dumps(payload)) as resp:
+                async with session.post(url, headers=headers, data=json.dumps(payload)) as resp:
                     if resp.status == 503:
                         if attempt < max_retries - 1:
                             delay = base_delay * (2 ** attempt)
